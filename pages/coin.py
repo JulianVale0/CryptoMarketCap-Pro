@@ -26,13 +26,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<a href='/' class='back-btn'>Back to Rankings</a><br><br>", unsafe_allow_html=True)
+# Back button + coin selection
+if st.button("← Back to Rankings"):
+    if "selected_coin" in st.session_state:
+        del st.session_state.selected_coin
+    st.switch_page("streamlit_app.py")
 
-query_params = st.query_params
-coin_id = query_params.get("id", [None])[0]
-if not coin_id:
+# Get coin from session state
+if "selected_coin" not in st.session_state:
     st.error("No coin selected.")
     st.stop()
+
+coin_id = st.session_state.selected_coin
 
 @st.cache_data(ttl=10)
 def get_detail(cid):
