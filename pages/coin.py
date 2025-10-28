@@ -78,37 +78,49 @@ symbol_to_id = {
 coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 
 # === API FUNCTIONS ===
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=60)
 def get_detail(cid):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}"
     headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
     try:
-        return requests.get(url, params={"localization":False, "market_data":True, "sparkline":True}, headers=headers, timeout=15).json()
+        response = requests.get(
+            url,
+            params={"localization": False, "market_data": True, "sparkline": True},
+            headers=headers,
+            timeout=10
+        )
+        response.raise_for_status()
+        return response.json()
     except:
         return None
 
-@st.cache_data(ttl=5)
+@st.cache_data(ttl=60)
 def get_ohlc(cid, days):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/ohlc"
     headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
     try:
-        d = requests.get(url, params={"vs_currency":"usd","days":days}, headers=headers, timeout=15).json()
-        df = pd.DataFrame(d, columns=["ts","open","high","low","close"])
+        response = requests.get(
+            url,
+            params={"vs_currency": "usd", "days": days},
+            headers=headers,
+            timeout=10
+        )
+        response.raise_for_status()
+        d = response.json()
+        if not d:
+            return pd.DataFrame()
+        df = pd.DataFrame(d, columns=["ts", "open", "high", "low", "close"])
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         return df
     except:
         return pd.DataFrame()
 
-# === FETCH DATA + AUTO-REFRESH ===
+# === FETCH DATA ===
 with st.spinner("Loading coin data..."):
     detail = get_detail(coin_id)
 
-# Always refresh after 5s
-time.sleep(5)
-st.rerun()
-
 if not detail:
-    st.error("Failed to load coin. Retrying...")
+    st.error("Failed to load coin data. Please try again.")
     st.stop()
 
 name = detail.get("name", "N/A")
@@ -151,7 +163,9 @@ days = timeframes[selected_tf]
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown(f"### {selected_tf} Price Action")
 
-ohlc = get_ohlc(coin_id, days)
+with st.spinner("Loading chart..."):
+    ohlc = get_ohlc(coin_id, days)
+
 if not ohlc.empty:
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
@@ -175,7 +189,7 @@ if not ohlc.empty:
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 else:
-    st.info("Chart loading...")
+    st.info("Chart unavailable. Try a different timeframe.")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
