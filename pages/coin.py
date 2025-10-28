@@ -78,7 +78,6 @@ def get_detail(cid):
 
 @st.cache_data(ttl=60)
 def get_price_history(coin_id, days):
-    # Map CoinGecko ID to Binance.US symbol
     symbol_map = {
         "bitcoin": "BTCUSD", "ethereum": "ETHUSD", "binancecoin": "BNBUSD", "solana": "SOLUSD",
         "ripple": "XRPUSD", "cardano": "ADAUSD", "dogecoin": "DOGEUSD", "tron": "TRXUSD",
@@ -106,7 +105,7 @@ def get_price_history(coin_id, days):
         df.columns = ["ts", "price"]
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         df["price"] = df["price"].astype(float)
-        return df.to_dict(orient="records")
+        return df  # ← RETURN DataFrame
     except Exception as e:
         st.error(f"API error: {e}")
         return pd.DataFrame()
@@ -166,7 +165,7 @@ if not df.empty:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['ts'],
-        y=df['close'],
+        y=df['price'],
         line=dict(color="#00d4aa", width=2),
         mode='lines'
     ))
