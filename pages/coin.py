@@ -77,7 +77,7 @@ symbol_to_id = {
 coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 
 # === API FUNCTIONS ===
-@st.cache_data(ttl=1)
+@st.cache_data(ttl=5)  # 5s = safe + fast
 def get_detail(cid):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}"
     headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
@@ -86,7 +86,7 @@ def get_detail(cid):
     except:
         return None
 
-@st.cache_data(ttl=1)
+@st.cache_data(ttl=5)  # 5s = safe + fast
 def get_ohlc(cid, days):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/ohlc"
     headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
