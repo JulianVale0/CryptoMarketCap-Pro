@@ -76,19 +76,19 @@ if not data or not isinstance(data, (list, tuple)):
   
 df = pd.DataFrame(data)
 cols = {
-        "Name": "name",
-        "Symbol": "symbol",
-        "Price": "current_price",
-        "1h%": "price_change_percentage_1h_in_currency",
-        "24h%": "price_change_percentage_24h_in_currency",
-        "7d%": "price_change_percentage_7d_in_currency",
-        "Market Cap": "market_cap",
-        "Volume": "total_volume",
-        "7d Spark": "sparkline_in_7d"
+  "Name": "name",
+  "Symbol": "symbol",
+  "Price": "current_price",
+  "1h%": "price_change_percentage_1h_in_currency",
+  "24h%": "price_change_percentage_24h_in_currency",
+  "7d%": "price_change_percentage_7d_in_currency",
+  "Market Cap": "market_cap",
+  "Volume": "total_volume",
+  "7d Spark": "sparkline_in_7d"
     }
-    df = df[[v for k, v in cols.items() if v in df.columns]].copy()
-    df.insert(0, "#", range(1, len(df) + 1))
-    df.columns = ["#"] + [k for k, v in cols.items() if v in df.columns]
+df = df[[v for k, v in cols.items() if v in df.columns]].copy()
+df.insert(0, "#", range(1, len(df) + 1))
+df.columns = ["#"] + [k for k, v in cols.items() if v in df.columns]
 
     # Format Price
     if "Price" in df.columns:
