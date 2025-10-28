@@ -147,7 +147,7 @@ def get_market_chart_range(cid, days):
         return pd.DataFrame()
 
 @st.cache_data(ttl=60)
-def get_market_chart(cid, days):
+def get_market_chart_range(cid, days):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
     headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
     try:
