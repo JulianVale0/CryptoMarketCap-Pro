@@ -93,7 +93,7 @@ def get_ohlc(cid):
         d = requests.get(url, params={"vs_currency":"usd","days":7}, headers=headers, timeout=15).json()
         df = pd.DataFrame(d, columns=["ts","open","high","low","close"])
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        return df.iloc[::4].reset_index(drop=True)  # Sample every 4h
+        return df  # Full 4h data
     except:
         return pd.DataFrame()
 
