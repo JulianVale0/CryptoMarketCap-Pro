@@ -132,16 +132,15 @@ chart_type = st.radio("Chart Type", ["Line", "Candles"], horizontal=True)
 # 7. PRICE HISTORY (Binance.US)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
-def get_price_history(cid, days):
+def get_price_history(coin_id, days):
     symbol_map = {
         "bitcoin": "BTCUSD", "ethereum": "ETHUSD", "binancecoin": "BNBUSD", "solana": "SOLUSD",
         "ripple": "XRPUSD", "cardano": "ADAUSD", "dogecoin": "DOGEUSD", "tron": "TRXUSD",
         "polkadot": "DOTUSD", "polygon": "MATICUSD", "litecoin": "LTCUSD", "avalanche-2": "AVAXUSD",
         "shiba-inu": "SHIBUSD", "chainlink": "LINKUSD", "uniswap": "UNIUSD"
     }
-    symbol = symbol_map.get(cid, cid.upper() + "USD")
-
-    # Choose interval & limit
+    symbol = symbol_map.get(coin_id, coin_id.upper() + "USD")
+    
     if days == 1:
         interval, limit = "1m", 1440
     elif days == 7:
@@ -156,30 +155,28 @@ def get_price_history(cid, days):
         interval, limit = "1d", 1000
     else:
         interval, limit = "1d", min(days, 1000)
-
+    
     url = "https://api.binance.us/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
-
+    
     try:
-        r = requests.get(url, params=params, timeout=10)
-        data = r.json()
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
         if not data or isinstance(data, dict):
             return pd.DataFrame()
-
-        df = pd.DataFrame(
-            data,
-            columns=[
-                "open_time", "open", "high", "low", "close", "volume",
-                "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
-            ],
-        )
+        
+        df = pd.DataFrame(data, columns=[
+            "open_time", "open", "high", "low", "close", "volume",
+            "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
+        ])
         df = df[["open_time", "open", "high", "low", "close"]]
         df.columns = ["ts", "open", "high", "low", "close"]
-        df["ts"] = pd.to_datetime(df["ts"], unit="ms")
+        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
-
-        # Slice last `days` points
-        df = df.sort_values("ts").tail(days).reset_index(drop=True)
+        
+        # ---- EXACT TIME RANGE ----
+        cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
+        df = df[df["ts"] >= cutoff].reset_index(drop=True)
         return df
     except Exception as e:
         st.error(f"API error: {e}")
