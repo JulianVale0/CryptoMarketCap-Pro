@@ -1,13 +1,3 @@
-# CryptoMarketCap Pro — Live, Clean, Fast
-
-**FINAL FIX: 100% PLAIN ASCII — NO FANCY CHARS ANYWHERE**  
-**PROBLEM: Hidden em-dashes (`—`) in comments**  
-**SOLUTION: Replace entire file with this clean version**
-
----
-
-## **REPLACE `streamlit_app.py` WITH THIS (COPY-PASTE EXACTLY)**
-
 ```python
 import streamlit as st
 import requests
