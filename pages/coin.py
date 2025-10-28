@@ -121,6 +121,28 @@ def get_ohlc(cid, days):
         st.warning(f"OHLC request failed: {str(e)}")
         return pd.DataFrame()
 
+@st.cache_data(ttl=60)
+def get_market_chart(cid, days):
+    url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
+    headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
+    try:
+        response = requests.get(
+            url,
+            params={"vs_currency": "usd", "days": days},
+            headers=headers,
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+        prices = data.get("prices", [])
+        if not prices:
+            return pd.DataFrame()
+        df = pd.DataFrame(prices, columns=["ts", "price"])
+        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
+        return df
+    except:
+        return pd.DataFrame()
+
 # === FETCH DATA ===
 with st.spinner("Loading coin data..."):
     detail = get_detail(coin_id)
@@ -195,30 +217,30 @@ if days in [1, 7]:
         )
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     else:
-        # Fallback to sparkline
-        spark = detail.get("market_data", {}).get("sparkline_in_7d", {}).get("price", [])
-        if spark:
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                y=spark,
-                line=dict(color="#00d4aa", width=2),
-                mode='lines'
-            ))
-            fig.update_layout(
-                height=300,
-                margin=dict(l=0, r=0, t=0, b=0),
-                template="plotly_dark",
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)",
-                xaxis=dict(showticklabels=False),
-                yaxis=dict(showticklabels=False)
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            st.caption("7D sparkline (OHLC temporarily unavailable)")
-        else:
-            st.info("Chart data temporarily unavailable.")
+        st.info("OHLC data not available for this timeframe.")
 else:
-    st.info("OHLC charts only available for 1D and 7D.")
+    with st.spinner("Loading price history..."):
+        df = get_market_chart(coin_id, days)
+    if not df.empty:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=df['ts'],
+            y=df['price'],
+            line=dict(color="#00d4aa", width=2),
+            mode='lines'
+        ))
+        fig.update_layout(
+            height=500,
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+            yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+            font=dict(family="Inter", color="#e0e0e0")
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("Price history unavailable.")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
