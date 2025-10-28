@@ -128,25 +128,58 @@ with c4: st.metric("ATL", f"${atl:,.4f}" if atl else "N/A")
 st.markdown("</div>", unsafe_allow_html=True)
 
 ohlc = get_ohlc(coin_id)
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+st.markdown("### 7-Day Price Action")
 if not ohlc.empty:
-    delta = ohlc["close"].diff()
-    gain = delta.clip(lower=0).rolling(14).mean()
-    loss = -delta.clip(upper=0).rolling(14).mean()
-    rsi = 100 - (100 / (1 + gain/loss))
-
+    # === CANDLES — NEON GLASS STYLE ===
     fig = go.Figure()
-    fig.add_trace(go.Candlestick(x=ohlc['ts'], open=ohlc['open'], high=ohlc['high'], low=ohlc['low'], close=ohlc['close']))
-    fig.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", height=500, margin=dict(t=40))
-    st.plotly_chart(fig, use_container_width=True)
+    fig.add_trace(go.Candlestick(
+        x=ohlc['ts'],
+        open=ohlc['open'],
+        high=ohlc['high'],
+        low=ohlc['low'],
+        close=ohlc['close'],
+        increasing_line_color='#00ff88',
+        decreasing_line_color='#ff6b6b',
+        increasing_fillcolor='#00ff8833',
+        decreasing_fillcolor='#ff6b6b33'
+    ))
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=500,
+        margin=dict(l=0, r=0, t=40, b=0),
+        xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        font=dict(family="Inter", color="#e0e0e0")
+    )
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
+    # === RSI — NEON GLOW ===
     fig_rsi = go.Figure()
-    fig_rsi.add_trace(go.Scatter(x=ohlc['ts'], y=rsi, line=dict(color="#00d4aa")))
-    fig_rsi.add_hline(y=70, line_dash="dash", line_color="#ff6b6b")
-    fig_rsi.add_hline(y=30, line_dash="dash", line_color="#00ff88")
-    fig_rsi.update_layout(height=180, margin=dict(t=0), template="plotly_dark")
-    st.plotly_chart(fig_rsi, use_container_width=True)
+    fig_rsi.add_trace(go.Scatter(
+        x=ohlc['ts'],
+        y=rsi,
+        line=dict(color="#00d4aa", width=2),
+        name="RSI"
+    ))
+    fig_rsi.add_hline(y=70, line_dash="dash", line_color="#ff6b6b", annotation_text="Overbought")
+    fig_rsi.add_hline(y=30, line_dash="dash", line_color="#00ff88", annotation_text="Oversold")
+    fig_rsi.update_layout(
+        height=200,
+        margin=dict(l=0, r=0, t=20, b=0),
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(showgrid=False),
+        yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', range=[0, 100]),
+        font=dict(family="Inter", color="#e0e0e0")
+    )
+    st.plotly_chart(fig_rsi, use_container_width=True, config={'displayModeBar': False})
 else:
     st.info("Chart loading...")
+st.markdown("</div>", unsafe_allow_html=True)
 
 def sparkline(p):
     if len(p) < 2: return "---"
