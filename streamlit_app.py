@@ -1,10 +1,9 @@
-# File: streamlit_app.py
+# File: streamlit_app.py (FIXED & COOL GRAPHS)
 import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import datetime
 
 # === PAGE CONFIG ===
 st.set_page_config(page_title="Crypto Pro Dashboard", page_icon="Chart increasing", layout="wide")
@@ -12,7 +11,7 @@ st.set_page_config(page_title="Crypto Pro Dashboard", page_icon="Chart increasin
 # === DARK PRO THEME ===
 st.markdown("""
 <style>
-    .main {background-color: #0e1117; color: #e0e0e0;}
+    .main {background-color: #0e1117; color: #e0e00e;}
     .stMetric {background-color: #1a1f2e; padding: 12px; border-radius: 12px; border: 1px solid #2a2f45;}
     h1, h2, h3 {color: #00d4aa;}
     .stSelectbox > div > div {background-color: #1a1f2e; color: white; border: 1px solid #2a2f45;}
@@ -40,7 +39,7 @@ def fetch(endpoint):
     except:
         return None
 
-# === TOP 10 TABLE WITH SPARKLINE ===
+# === TOP 10 TABLE WITH SPARKLINE (FIXED) ===
 st.markdown("## **Top 10 Coins**")
 top = fetch("/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=true")
 if top:
@@ -48,16 +47,23 @@ if top:
     df = df[["name", "symbol", "current_price", "price_change_percentage_24h", "market_cap", "sparkline_in_7d"]]
     df.columns = ["Name", "Symbol", "Price", "24h %", "Market Cap", "7d Trend"]
     df["Price"] = df["Price"].apply(lambda x: f"${x:,.2f}")
-    df["24h %"] = df["24h %"].apply(lambda x: f"<span style='color:{'green' if x>=0 else 'red'}; font-weight:bold'>{x:+.2f}%</span>" if pd.notnull(x) else "N/A")
+    df["24h %"] = df["24h %"].apply(lambda x: f"<span style='color:{'lime' if x>=0 else 'red'}; font-weight:bold'>{x:+.2f}%</span>" if pd.notnull(x) else "N/A")
     df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B")
     df["Symbol"] = df["Symbol"].str.upper()
+
+    # === SAFE SPARKLINE FUNCTION ===
+    def safe_sparkline(spark_data):
+        if not spark_data or 'price' not in spark_data or len(spark_data['price']) == 0:
+            return "───"
+        prices = spark_data['price'][-20:]  # Last 20 points
+        first = prices[0]
+        return ''.join(['█' if p > first else '░' for p in prices])[::-1]
+
+    df["7d Trend"] = df["7d Trend"].apply(safe_sparkline)
     
-    # Sparkline
-    def sparkline(data):
-        return f"<div style='height:30px;'>{''.join(['█' if p > data[0] else '░' for p in data['price'][-20:]])[::-1]}</div>"
-    df["7d Trend"] = df["7d Trend"].apply(lambda x: sparkline(x) if x else "")
-    
-    st.markdown(df[["Name", "Symbol", "Price", "24h %", "Market Cap", "7d Trend"]].to_html(escape=False, index=False), unsafe_allow_html=True)
+    # === RENDER HTML TABLE ===
+    html_table = df.to_html(escape=False, index=False)
+    st.markdown(html_table, unsafe_allow_html=True)
 
 # === PRO CANDLESTICK + VOLUME + RSI ===
 st.markdown(f"## **{coin_name} Pro Chart**")
@@ -74,12 +80,12 @@ if ohlc and market:
     df_vol = pd.DataFrame(market['total_volumes'], columns=['time', 'volume'])
     df_vol['time'] = pd.to_datetime(df_vol['time'], unit='ms')
     
-    # RSI (14)
+    # RSI
     prices = pd.DataFrame(market['prices'], columns=['time', 'price'])
     prices['time'] = pd.to_datetime(prices['time'], unit='ms')
     delta = prices['price'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    gain = delta.where(delta > 0, 0).rolling(14).mean()
+    loss = -delta.where(delta < 0, 0).rolling(14).mean()
     rs = gain / loss
     rsi = 100 - (100 / (1 + rs))
     prices['rsi'] = rsi
@@ -89,7 +95,7 @@ if ohlc and market:
         rows=3, cols=1,
         shared_xaxes=True,
         vertical_spacing=0.05,
-        subplot_titles=(f"{coin_name} Price", "Volume", "RSI"),
+        subplot_titles=(f"{coin_name} Price", "Volume", "RSI (14)"),
         row_heights=[0.6, 0.2, 0.2]
     )
 
@@ -110,7 +116,7 @@ if ohlc and market:
 
     fig.update_layout(
         height=800, template="plotly_dark", xaxis_rangeslider_visible=False,
-        title_text=f"{coin_name} - {timeframe} (Live)"
+        title_text=f"{coin_name} - {timeframe} (Live • Auto-Update)"
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -130,4 +136,4 @@ with st.expander("Add Holdings"):
         df_p["Value"] = df_p["Value"].apply(lambda x: f"${x:,.2f}")
         st.dataframe(df_p, hide_index=True)
 
-st.caption("**Live • Auto-updates every 10s** • Data: CoinGecko")
+st.caption("**Live • Auto-updates every 10s** • Data: CoinGecko • Built with Streamlit")
