@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
+import time
 
 st.set_page_config(page_title="CryptoMarketCap Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
 
@@ -134,7 +135,8 @@ if data and len(data) > 0:
 
     st.markdown("</div>", unsafe_allow_html=True)
 else:
-    st.error("Failed to load data. Check internet or CoinGecko status. Retrying in 10s...")
+    st.error("Failed to load data. Retrying...")
+    time.sleep(5)
     st.rerun()
 
 st.markdown("<div class='footer'>Live - Updates every 10s</div>", unsafe_allow_html=True)
