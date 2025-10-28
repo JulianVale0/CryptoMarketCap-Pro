@@ -78,17 +78,19 @@ def get_detail(cid):
 
 @st.cache_data(ttl=60)
 def get_price_history(coin_id, days):
+    # Map CoinGecko ID to Binance.US symbol
     symbol_map = {
-        "bitcoin": "BTCUSDT", "ethereum": "ETHUSDT", "binancecoin": "BNBUSDT", "solana": "SOLUSDT",
-        "ripple": "XRPUSDT", "cardano": "ADAUSDT", "dogecoin": "DOGEUSDT", "tron": "TRXUSDT",
-        "polkadot": "DOTUSDT", "polygon": "MATICUSDT", "litecoin": "LTCUSDT", "avalanche-2": "AVAXUSDT",
-        "shiba-inu": "SHIBUSDT", "chainlink": "LINKUSDT", "uniswap": "UNIUSDT"
+        "bitcoin": "BTCUSD", "ethereum": "ETHUSD", "binancecoin": "BNBUSD", "solana": "SOLUSD",
+        "ripple": "XRPUSD", "cardano": "ADAUSD", "dogecoin": "DOGEUSD", "tron": "TRXUSD",
+        "polkadot": "DOTUSD", "polygon": "MATICUSD", "litecoin": "LTCUSD", "avalanche-2": "AVAXUSD",
+        "shiba-inu": "SHIBUSD", "chainlink": "LINKUSD", "uniswap": "UNIUSD"
     }
-    symbol = symbol_map.get(coin_id, coin_id.upper() + "USDT")
+    symbol = symbol_map.get(coin_id, coin_id.upper() + "USD")
+    
     interval = "1d"
     limit = min(days, 1000)
     
-    url = "https://api.binance.com/api/v3/klines"
+    url = "https://api.binance.us/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
     
     try:
@@ -105,7 +107,8 @@ def get_price_history(coin_id, days):
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         df["price"] = df["price"].astype(float)
         return df.to_dict(orient="records")
-    except:
+    except Exception as e:
+        st.error(f"API error: {e}")
         return pd.DataFrame()
 
 # === FETCH DATA ===
