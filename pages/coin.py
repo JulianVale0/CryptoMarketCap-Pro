@@ -88,10 +88,22 @@ def get_price_history(coin_id, days):
     
     if days == 1:
         interval = "1m"
-        limit = 1440
+        limit = 1440  # 24h
     elif days == 7:
         interval = "5m"
         limit = 2016  # 7 days
+    elif days == 30:
+        interval = "1h"
+        limit = 720   # 30 days
+    elif days == 90:
+        interval = "4h"
+        limit = 540   # 90 days
+    elif days == 365:
+        interval = "1d"
+        limit = 365
+    elif days == 1825:
+        interval = "1d"
+        limit = 1000
     else:
         interval = "1d"
         limit = min(days, 1000)
@@ -108,10 +120,10 @@ def get_price_history(coin_id, days):
             "open_time", "open", "high", "low", "close", "volume",
             "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
         ])
-        df = df[["open_time", "open", "high", "low", "close"]]
-        df.columns = ["ts", "open", "high", "low", "close"]
+        df = df[["open_time", "close"]]
+        df.columns = ["ts", "price"]
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
+        df["price"] = df["price"].astype(float)
         return df
     except Exception as e:
         st.error(f"API error: {e}")
@@ -172,7 +184,7 @@ if not df.empty:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['ts'],
-        y=df['close'],
+        y=df['price'],
         line=dict(color="#00d4aa", width=2),
         mode='lines'
     ))
@@ -181,7 +193,12 @@ if not df.empty:
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        xaxis=dict(
+            showgrid=True, 
+            gridcolor='rgba(0, 212, 170, 0.1)', 
+            color='#888',
+            title=f"{selected_tf} Time Range"
+        ),
         yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
         font=dict(family="Inter", color="#e0e0e0")
     )
