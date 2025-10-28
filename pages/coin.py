@@ -78,7 +78,6 @@ def get_detail(cid):
 
 @st.cache_data(ttl=60)
 def get_price_history(coin_id, days):
-    # Map CoinGecko ID to Binance symbol
     symbol_map = {
         "bitcoin": "BTCUSDT", "ethereum": "ETHUSDT", "binancecoin": "BNBUSDT", "solana": "SOLUSDT",
         "ripple": "XRPUSDT", "cardano": "ADAUSDT", "dogecoin": "DOGEUSDT", "tron": "TRXUSDT",
@@ -86,9 +85,8 @@ def get_price_history(coin_id, days):
         "shiba-inu": "SHIBUSDT", "chainlink": "LINKUSDT", "uniswap": "UNIUSDT"
     }
     symbol = symbol_map.get(coin_id, coin_id.upper() + "USDT")
-    
     interval = "1d"
-    limit = min(days, 1000)  # Binance max 1000
+    limit = min(days, 1000)
     
     url = "https://api.binance.com/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
@@ -96,16 +94,16 @@ def get_price_history(coin_id, days):
     try:
         response = requests.get(url, params=params, timeout=10)
         data = response.json()
-        if not data or isinstance(data, dict):  # Error response
+        if not data or isinstance(data, dict):
             return pd.DataFrame()
         df = pd.DataFrame(data, columns=[
             "open_time", "open", "high", "low", "close", "volume",
             "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
         ])
-        df = df[["open_time", "open", "high", "low", "close"]]
-        df.columns = ["ts", "open", "high", "low", "close"]
+        df = df[["open_time", "close"]]
+        df.columns = ["ts", "price"]
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
+        df["price"] = df["price"].astype(float)
         return df.to_dict(orient="records")
     except:
         return pd.DataFrame()
