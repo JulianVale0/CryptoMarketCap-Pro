@@ -65,11 +65,12 @@ def fetch_top():
 
 with st.spinner("Loading live data..."):
     data = fetch_top()
-if data:
-    # === [ALL YOUR EXISTING TABLE CODE BELOW] ===
-    df = pd.DataFrame(data)
-    # ... keep everything else unchanged until the end
+
+if data and len(data) > 0:
+    # === ALL YOUR TABLE CODE HERE (df, formatting, clickable rows) ===
+    # ... keep everything from df = pd.DataFrame(data) to st.markdown("</div>", unsafe_allow_html=True)
 else:
-    st.error("Failed to load. Retrying in 10s...")
+    st.error("Failed to load data. Check internet or CoinGecko status. Retrying in 10s...")
+    st.rerun()  # Auto-retry
 
 st.markdown("<div class='footer'>Live - Updates every 10s</div>", unsafe_allow_html=True)
