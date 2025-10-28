@@ -88,16 +88,16 @@ def get_price_history(coin_id, days):
     
     if days == 1:
         interval = "1m"
-        limit = 1440  # 24h
+        limit = 1440
     elif days == 7:
         interval = "5m"
-        limit = 2016  # 7 days
+        limit = 2016
     elif days == 30:
         interval = "1h"
-        limit = 720   # 30 days
+        limit = 720
     elif days == 90:
         interval = "4h"
-        limit = 540   # 90 days
+        limit = 540
     elif days == 365:
         interval = "1d"
         limit = 365
@@ -120,10 +120,13 @@ def get_price_history(coin_id, days):
             "open_time", "open", "high", "low", "close", "volume",
             "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
         ])
-        df = df[["open_time", "close"]]
-        df.columns = ["ts", "price"]
+        df = df[["open_time", "open", "high", "low", "close"]]
+        df.columns = ["ts", "open", "high", "low", "close"]
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        df["price"] = df["price"].astype(float)
+        df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
+        
+        # Reverse to newest first, slice last `days` points
+        df = df.sort_values('ts').tail(days).reset_index(drop=True)
         return df
     except Exception as e:
         st.error(f"API error: {e}")
