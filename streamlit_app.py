@@ -100,7 +100,7 @@ if market and 'prices' in market and market['prices']:
         market.get('total_volumes', [[t, 0] for t in prices['time'].astype('int64')]),
         columns=['time', 'volume']
     )
-    df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')  # ms
+    df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')
 
     # === RSI ===
     delta = prices['price'].diff()
@@ -113,4 +113,28 @@ if market and 'prices' in market and market['prices']:
     # === PLOT ===
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.03,
                         row_heights=[0.6, 0.2, 0.2])
-    fig.add_trace(go.Candlestick(x=df_c['time'], open=df_c['open'], high=df_c['high
+    fig.add_trace(go.Candlestick(
+        x=df_c['time'],
+        open=df_c['open'],
+        high=df_c['high'],
+        low=df_c['low'],
+        close=df_c['close'],
+        name="Price",
+        increasing_line_color='#00ff88',
+        decreasing_line_color='#ff6b6b'
+    ), row=1, col=1)
+    fig.add_trace(go.Bar(x=df_v['time'], y=df_v['volume'], name="Volume", marker_color='rgba(68, 87, 119, 0.6)'), row=2, col=1)
+    fig.add_trace(go.Scatter(x=prices['time'], y=prices['rsi'], name="RSI", line=dict(color='#ffaa00', width=2)), row=3, col=1)
+    fig.add_hline(y=70, line_dash="dot", line_color="#ff6b6b", row=3, col=1)
+    fig.add_hline(y=30, line_dash="dot", line_color="#00ff88", row=3, col=1)
+
+    fig.update_layout(height=700, template="plotly_dark", xaxis_rangeslider_visible=False,
+                      margin=dict(l=40, r=40, t=60, b=40), showlegend=False)
+    st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("Loading chart data...")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# === PORTFOLIO ===
+st.markdown("<div class='glass-card'>
