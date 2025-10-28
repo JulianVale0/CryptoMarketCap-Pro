@@ -127,10 +127,10 @@ if data and len(data) > 0:
             with col6: st.write(row.get("24h%", "N/A"))
             with col7: st.write(row.get("7d%", "N/A"))
             with col8:
-                  if st.button("View", key=f"view_{coin_id}"):
+                if st.button("View", key=f"view_{coin_id}"):
                     st.query_params.clear()
                     st.query_params["id"] = coin_id
-                    st.rerun()
+                    st.experimental_rerun()
             st.write(row.get("7d Spark", "---"))
 
     st.markdown("</div>", unsafe_allow_html=True)
