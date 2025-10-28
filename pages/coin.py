@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
-import time  # ← REQUIRED FOR AUTO-REFRESH
+import time
 
 st.set_page_config(page_title="Coin Detail", layout="wide")
 
@@ -103,110 +103,109 @@ def get_ohlc(cid, days):
 with st.spinner("Loading coin data..."):
     detail = get_detail(coin_id)
 
-if detail:
-    name = detail.get("name", "N/A")
-    symbol = detail.get("symbol", "").upper()
-    price = detail.get("market_data", {}).get("current_price", {}).get("usd", 0)
-    change = detail.get("market_data", {}).get("price_change_percentage_24h", 0)
-    cap = detail.get("market_data", {}).get("market_cap", {}).get("usd", 0)
-    vol = detail.get("market_data", {}).get("total_volume", {}).get("usd", 0)
-    ath = detail.get("market_data", {}).get("ath", {}).get("usd", 0)
-    atl = detail.get("market_data", {}).get("atl", {}).get("usd", 0)
-    img = detail.get("image", {}).get("large", "")
+# Always refresh after 5s
+time.sleep(5)
+st.rerun()
 
-    # === HEADER ===
-    st.markdown("<div class='glass-card' style='padding: 32px 24px; text-align: center; margin-bottom: 24px;'>", unsafe_allow_html=True)
-    col_icon, col_name, col_symbol = st.columns([1, 3, 1], gap="small")
-    with col_icon:
-        if img:
-            st.image(img, width=64)
-    with col_name:
-        st.markdown(f"<h1 style='margin:0; color:#00d4aa; text-shadow: 0 0 20px rgba(0,212,170,0.5); font-size: 2.8rem;'>{name}</h1>", unsafe_allow_html=True)
-    with col_symbol:
-        st.markdown(f"<h3 style='margin:0; color:#888; font-size: 1.4rem;'>{symbol}</h3>", unsafe_allow_html=True)
-    change_cls = "price-up" if change >= 0 else "price-down"
-    st.markdown(f"<h2 style='margin: 16px 0 0 0; font-size: 2.2rem;'>${price:,.4f} <span class='{change_cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # === TIMEFRAME TOGGLE ===
-    timeframes = {
-        "1D": 1,
-        "7D": 7,
-        "1M": 30,
-        "3M": 90,
-        "1Y": 365,
-        "5Y": 1825
-    }
-    selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)
-    days = timeframes[selected_tf]
-
-    # === CHART ===
-    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.markdown(f"### {selected_tf} Price Action")
-
-    ohlc = get_ohlc(coin_id, days)
-    if not ohlc.empty:
-        fig = go.Figure()
-        fig.add_trace(go.Candlestick(
-            x=ohlc['ts'],
-            open=ohlc['open'],
-            high=ohlc['high'],
-            low=ohlc['low'],
-            close=ohlc['close'],
-            increasing_line_color='#00ff88',
-            decreasing_line_color='#ff6b6b'
-        ))
-        fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            height=500,
-            margin=dict(l=0, r=0, t=40, b=0),
-            xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
-            yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
-            font=dict(family="Inter", color="#e0e0e0")
-        )
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    else:
-        st.info("Chart loading...")
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # === METRICS ===
-    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
-        st.metric("Market Cap", f"${cap/1e9:.2f}B" if cap else "N/A")
-        st.markdown("</div>", unsafe_allow_html=True)
-    with c2:
-        st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
-        st.metric("24h Volume", f"${vol/1e6:.1f}M" if vol else "N/A")
-        st.markdown("</div>", unsafe_allow_html=True)
-    with c3:
-        st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
-        st.metric("ATH", f"${ath:,.2f}" if ath else "N/A")
-        st.markdown("</div>", unsafe_allow_html=True)
-    with c4:
-        st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
-        st.metric("ATL", f"${atl:,.4f}" if atl else "N/A")
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # === LIVE BADGE ===
-    st.markdown("""
-    <div style='text-align:center; margin:20px 0;'>
-      <span style='background:#00d4aa; color:#000; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:700; animation: pulse 2s infinite;'>
-        LIVE
-      </span>
-    </div>
-    <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}</style>
-    """, unsafe_allow_html=True)
-
-    # === AUTO-REFRESH EVERY 5s ===
-    time.sleep(5)
-    st.rerun()
-else:
+if not detail:
     st.error("Failed to load coin. Retrying...")
-    time.sleep(5)
-    st.rerun()
+    st.stop()
+
+name = detail.get("name", "N/A")
+symbol = detail.get("symbol", "").upper()
+price = detail.get("market_data", {}).get("current_price", {}).get("usd", 0)
+change = detail.get("market_data", {}).get("price_change_percentage_24h", 0)
+cap = detail.get("market_data", {}).get("market_cap", {}).get("usd", 0)
+vol = detail.get("market_data", {}).get("total_volume", {}).get("usd", 0)
+ath = detail.get("market_data", {}).get("ath", {}).get("usd", 0)
+atl = detail.get("market_data", {}).get("atl", {}).get("usd", 0)
+img = detail.get("image", {}).get("large", "")
+
+# === HEADER ===
+st.markdown("<div class='glass-card' style='padding: 32px 24px; text-align: center; margin-bottom: 24px;'>", unsafe_allow_html=True)
+col_icon, col_name, col_symbol = st.columns([1, 3, 1], gap="small")
+with col_icon:
+    if img:
+        st.image(img, width=64)
+with col_name:
+    st.markdown(f"<h1 style='margin:0; color:#00d4aa; text-shadow: 0 0 20px rgba(0,212,170,0.5); font-size: 2.8rem;'>{name}</h1>", unsafe_allow_html=True)
+with col_symbol:
+    st.markdown(f"<h3 style='margin:0; color:#888; font-size: 1.4rem;'>{symbol}</h3>", unsafe_allow_html=True)
+change_cls = "price-up" if change >= 0 else "price-down"
+st.markdown(f"<h2 style='margin: 16px 0 0 0; font-size: 2.2rem;'>${price:,.4f} <span class='{change_cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# === TIMEFRAME TOGGLE ===
+timeframes = {
+    "1D": 1,
+    "7D": 7,
+    "1M": 30,
+    "3M": 90,
+    "1Y": 365,
+    "5Y": 1825
+}
+selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)
+days = timeframes[selected_tf]
+
+# === CHART ===
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+st.markdown(f"### {selected_tf} Price Action")
+
+ohlc = get_ohlc(coin_id, days)
+if not ohlc.empty:
+    fig = go.Figure()
+    fig.add_trace(go.Candlestick(
+        x=ohlc['ts'],
+        open=ohlc['open'],
+        high=ohlc['high'],
+        low=ohlc['low'],
+        close=ohlc['close'],
+        increasing_line_color='#00ff88',
+        decreasing_line_color='#ff6b6b'
+    ))
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=500,
+        margin=dict(l=0, r=0, t=40, b=0),
+        xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        font=dict(family="Inter", color="#e0e0e0")
+    )
+    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+else:
+    st.info("Chart loading...")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# === METRICS ===
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("Market Cap", f"${cap/1e9:.2f}B" if cap else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c2:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("24h Volume", f"${vol/1e6:.1f}M" if vol else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c3:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("ATH", f"${ath:,.2f}" if ath else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c4:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("ATL", f"${atl:,.4f}" if atl else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# === LIVE BADGE ===
+st.markdown("""
+<div style='text-align:center; margin:20px 0;'>
+  <span style='background:#00d4aa; color:#000; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:700; animation: pulse 2s infinite;'>
+    LIVE
+  </span>
+</div>
+<style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}</style>
+""", unsafe_allow_html=True)
