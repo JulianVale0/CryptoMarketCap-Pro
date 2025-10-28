@@ -117,7 +117,9 @@ if data and len(data) > 0:
     st.markdown("## Top 100 Cryptocurrencies")
 
     for idx, row in df.iterrows():
-        coin_id = data[idx]["id"]
+        if idx >= len(data):
+            continue
+        coin_id = data[idx].get("id", "unknown")
         with st.expander(f"#{row['#']} {row['Name']} {row['Symbol']} • ${row['Price']}"):
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 3, 1, 2, 1, 1, 1, 2])
             with col1: st.write(row["#"])
@@ -131,7 +133,7 @@ if data and len(data) > 0:
                 if st.button("View", key=f"view_{coin_id}"):
                     st.session_state.selected_coin = coin_id
                     st.switch_page("pages/coin.py")
-                    st.write(row.get("7d Spark", "---"))
+            st.write(row.get("7d Spark", "---"))
 
     st.markdown("</div>", unsafe_allow_html=True)
 else:
