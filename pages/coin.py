@@ -76,9 +76,6 @@ symbol_to_id = {
 }
 coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 
-# === FETCH OHLC DATA ===
-ohlc = get_ohlc(coin_id)
-
 @st.cache_data(ttl=10)
 def get_detail(cid):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}"
@@ -96,9 +93,12 @@ def get_ohlc(cid):
         d = requests.get(url, params={"vs_currency":"usd","days":7}, headers=headers, timeout=15).json()
         df = pd.DataFrame(d, columns=["ts","open","high","low","close"])
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        return df.iloc[::4].reset_index(drop=True)
+        return df.iloc[::4].reset_index(drop=True)  # Sample every 4h
     except:
         return pd.DataFrame()
+
+# === FETCH OHLC DATA ===
+ohlc = get_ohlc(coin_id)
 
 with st.spinner("Loading coin data..."):
     detail = get_detail(coin_id)
