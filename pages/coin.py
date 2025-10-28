@@ -45,12 +45,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # === BACK BUTTON + COIN SELECTION ===
-if st.button("← Back to Rankings"):
+if st.button("Back to Rankings"):
     if "selected_coin" in st.session_state:
         del st.session_state.selected_coin
     st.switch_page("streamlit_app.py")
 
-# Get coin from session state
 if "selected_coin" not in st.session_state:
     st.error("No coin selected.")
     st.stop()
@@ -59,21 +58,10 @@ coin_id = st.session_state.selected_coin
 
 # === MAP SYMBOL TO COINGECKO ID ===
 symbol_to_id = {
-    "BTC": "bitcoin",
-    "ETH": "ethereum",
-    "BNB": "binancecoin",
-    "SOL": "solana",
-    "XRP": "ripple",
-    "ADA": "cardano",
-    "DOGE": "dogecoin",
-    "TRX": "tron",
-    "DOT": "polkadot",
-    "MATIC": "polygon",
-    "LTC": "litecoin",
-    "AVAX": "avalanche-2",
-    "SHIB": "shiba-inu",
-    "LINK": "chainlink",
-    "UNI": "uniswap"
+    "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana",
+    "XRP": "ripple", "ADA": "cardano", "DOGE": "dogecoin", "TRX": "tron",
+    "DOT": "polkadot", "MATIC": "polygon", "LTC": "litecoin", "AVAX": "avalanche-2",
+    "SHIB": "shiba-inu", "LINK": "chainlink", "UNI": "uniswap"
 }
 coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 
@@ -83,12 +71,7 @@ def get_detail(cid):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}"
     headers = {"User-Agent": "NEXA/1.0"}
     try:
-        response = requests.get(
-            url,
-            params={"localization": False, "market_data": True, "sparkline": True},
-            headers=headers,
-            timeout=10
-        )
+        response = requests.get(url, params={"localization": False, "market_data": True, "sparkline": True}, headers=headers, timeout=10)
         response.raise_for_status()
         return response.json()
     except:
@@ -101,12 +84,7 @@ def get_ohlc(cid, days):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/ohlc"
     headers = {"User-Agent": "NEXA/1.0"}
     try:
-        response = requests.get(
-            url,
-            params={"vs_currency": "usd", "days": days},
-            headers=headers,
-            timeout=10
-        )
+        response = requests.get(url, params={"vs_currency": "usd", "days": days}, headers=headers, timeout=10)
         response.raise_for_status()
         d = response.json()
         if not d:
@@ -119,15 +97,18 @@ def get_ohlc(cid, days):
 
 @st.cache_data(ttl=60)
 def get_market_chart(cid, days):
-    url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
+    if days <= 365:
+        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
+        params = {"vs_currency": "usd", "days": days}
+    else:
+        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart/range"
+        from_ts = int((pd.Timestamp.now() - pd.Timedelta(days=days)).timestamp())
+        to_ts = int(pd.Timestamp.now().timestamp())
+        params = {"vs_currency": "usd", "from": from_ts, "to": to_ts}
+    
     headers = {"User-Agent": "NEXA/1.0"}
     try:
-        response = requests.get(
-            url,
-            params={"vs_currency": "usd", "days": days},
-            headers=headers,
-            timeout=10
-        )
+        response = requests.get(url, params=params, headers=headers, timeout=10)
         response.raise_for_status()
         data = response.json()
         prices = data.get("prices", [])
