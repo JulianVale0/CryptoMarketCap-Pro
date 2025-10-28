@@ -86,8 +86,12 @@ def get_price_history(coin_id, days):
     }
     symbol = symbol_map.get(coin_id, coin_id.upper() + "USD")
     
-    interval = "1d"
-    limit = min(days, 1000)
+    if days == 1:
+        interval = "1m"
+        limit = 1440  # 24h
+    else:
+        interval = "1d"
+        limit = min(days, 1000)
     
     url = "https://api.binance.us/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
@@ -101,11 +105,11 @@ def get_price_history(coin_id, days):
             "open_time", "open", "high", "low", "close", "volume",
             "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
         ])
-        df = df[["open_time", "close"]]
-        df.columns = ["ts", "price"]
+        df = df[["open_time", "open", "high", "low", "close"]]
+        df.columns = ["ts", "open", "high", "low", "close"]
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        df["price"] = df["price"].astype(float)
-        return df  # ← RETURN DataFrame
+        df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
+        return df
     except Exception as e:
         st.error(f"API error: {e}")
         return pd.DataFrame()
@@ -163,12 +167,25 @@ with st.spinner("Loading price history..."):
 
 if not df.empty:
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=df['ts'],
-        y=df['price'],
-        line=dict(color="#00d4aa", width=2),
-        mode='lines'
-    ))
+    if days == 1:
+        # 1D = Candlesticks
+        fig.add_trace(go.Candlestick(
+            x=df['ts'],
+            open=df['open'],
+            high=df['high'],
+            low=df['low'],
+            close=df['close'],
+            increasing_line_color='#00ff88',
+            decreasing_line_color='#ff6b6b'
+        ))
+    else:
+        # 7D+ = Line
+        fig.add_trace(go.Scatter(
+            x=df['ts'],
+            y=df['close'],
+            line=dict(color="#00d4aa", width=2),
+            mode='lines'
+        ))
     fig.update_layout(
         height=500,
         template="plotly_dark",
