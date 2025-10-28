@@ -128,6 +128,7 @@ if data and len(data) > 0:
             with col7: st.write(row.get("7d%", "N/A"))
             with col8:
                   if st.button("View", key=f"view_{coin_id}"):
+                    st.query_params.clear()
                     st.query_params["id"] = coin_id
                     st.rerun()
             st.write(row.get("7d Spark", "---"))
