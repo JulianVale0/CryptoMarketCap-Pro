@@ -122,6 +122,31 @@ def get_ohlc(cid, days):
         return pd.DataFrame()
 
 @st.cache_data(ttl=60)
+def get_market_chart_range(cid, days):
+    if days <= 90:
+        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
+        params = {"vs_currency": "usd", "days": days}
+    else:
+        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart/range"
+        from_ts = int((pd.Timestamp.now() - pd.Timedelta(days=days)).timestamp())
+        to_ts = int(pd.Timestamp.now().timestamp())
+        params = {"vs_currency": "usd", "from": from_ts, "to": to_ts}
+    
+    headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
+    try:
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        prices = data.get("prices", [])
+        if not prices:
+            return pd.DataFrame()
+        df = pd.DataFrame(prices, columns=["ts", "price"])
+        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
+        return df
+    except:
+        return pd.DataFrame()
+
+@st.cache_data(ttl=60)
 def get_market_chart(cid, days):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
     headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
@@ -243,6 +268,7 @@ else:
         st.info("Price history unavailable.")
 
 st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 # === METRICS ===
