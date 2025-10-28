@@ -120,25 +120,16 @@ with col2:
     st.markdown(f"<h2>${price:,.4f} <span class='{cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
 
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-c1, c2, c3, c4 = st.columns(4)
-with c1: st.metric("Market Cap", f"${cap/1e9:.2f}B" if cap else "N/A")
-with c2: st.metric("24h Volume", f"${vol/1e6:.1f}M" if vol else "N/A")
-with c3: st.metric("ATH", f"${ath:,.2f}" if ath else "N/A")
-with c4: st.metric("ATL", f"${atl:,.4f}" if atl else "N/A")
-st.markdown("</div>", unsafe_allow_html=True)
-
-ohlc = get_ohlc(coin_id)
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown("### 7-Day Price Action")
 
 if not ohlc.empty:
-    # Calculate RSI
+    # RSI
     delta = ohlc["close"].diff()
     gain = delta.clip(lower=0).rolling(14).mean()
     loss = -delta.clip(upper=0).rolling(14).mean()
     rsi = 100 - (100 / (1 + gain / loss))
 
-    # === CANDLES — NEON GLASS STYLE ===
+    # === CANDLES — NEON LINES ONLY ===
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
         x=ohlc['ts'],
@@ -146,8 +137,8 @@ if not ohlc.empty:
         high=ohlc['high'],
         low=ohlc['low'],
         close=ohlc['close'],
-        increasing=dict(line=dict(color='#00ff88'), fillcolor='#00ff8833'),
-        decreasing=dict(line=dict(color='#ff6b6b'), fillcolor='#ff6b6b33')
+        increasing_line_color='#00ff88',
+        decreasing_line_color='#ff6b6b'
     ))
     fig.update_layout(
         template="plotly_dark",
@@ -161,7 +152,7 @@ if not ohlc.empty:
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-    # === RSI — NEON GLOW ===
+    # === RSI ===
     fig_rsi = go.Figure()
     fig_rsi.add_trace(go.Scatter(
         x=ohlc['ts'],
