@@ -1,4 +1,4 @@
-# api/crypto.py
+# api/main.py
 import requests
 import pandas as pd
 from fastapi import FastAPI
@@ -14,23 +14,11 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-# Map CoinGecko ID → Binance symbol
 SYMBOL_MAP = {
-    "bitcoin": "BTC",
-    "ethereum": "ETH",
-    "binancecoin": "BNB",
-    "solana": "SOL",
-    "ripple": "XRP",
-    "cardano": "ADA",
-    "dogecoin": "DOGE",
-    "tron": "TRX",
-    "polkadot": "DOT",
-    "polygon": "MATIC",
-    "litecoin": "LTC",
-    "avalanche-2": "AVAX",
-    "shiba-inu": "SHIB",
-    "chainlink": "LINK",
-    "uniswap": "UNI"
+    "bitcoin": "BTC", "ethereum": "ETH", "binancecoin": "BNB", "solana": "SOL",
+    "ripple": "XRP", "cardano": "ADA", "dogecoin": "DOGE", "tron": "TRX",
+    "polkadot": "DOT", "polygon": "MATIC", "litecoin": "LTC", "avalanche-2": "AVAX",
+    "shiba-inu": "SHIB", "chainlink": "LINK", "uniswap": "UNI"
 }
 
 def get_binance_klines(symbol: str, interval: str, limit: int = 1000):
@@ -56,12 +44,12 @@ def ohlc(coin_id: str, days: int = 365):
     interval = "1d"
     limit = 1000
 
-    # For 5Y, fetch in chunks
     if days > 1000:
         all_data = []
+        start_time = int((pd.Timestamp.now() - pd.Timedelta(days=days)).timestamp() * 1000)
         end_time = int(pd.Timestamp.now().timestamp() * 1000)
-        while len(all_data) < days:
-            start_time = end_time - (limit * 24 * 60 * 60 * 1000)  # 1000 days back
+        
+        while start_time < end_time:
             url = "https://api.binance.com/api/v3/klines"
             params = {
                 "symbol": symbol,
@@ -82,13 +70,13 @@ def ohlc(coin_id: str, days: int = 365):
                 df.columns = ["ts", "open", "high", "low", "close"]
                 df["ts"] = pd.to_datetime(df["ts"], unit='ms')
                 df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
-                all_data = df.to_dict(orient="records") + all_data
-                end_time = int(df["ts"].min().timestamp() * 1000) - 1
+                all_data.extend(df.to_dict(orient="records"))
+                start_time = int(df["ts"].max().timestamp() * 1000) + 1
                 if len(data) < limit:
                     break
             except:
                 break
-        return {"data": all_data[-days:]}  # Return last `days` points
+        return {"data": all_data[-days:]}
     else:
         return {"data": get_binance_klines(symbol, interval, limit=days)}
 
