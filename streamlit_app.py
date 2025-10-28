@@ -1,4 +1,4 @@
-# File: streamlit_app.py (SMOOTH & BEAUTIFUL)
+# File: streamlit_app.py (FIXED + SMOOTH UI)
 import streamlit as st
 import requests
 import pandas as pd
@@ -11,10 +11,7 @@ st.set_page_config(page_title="Crypto Pro", page_icon="Chart increasing", layout
 # === SMOOTH MODERN CSS ===
 st.markdown("""
 <style>
-    /* Font & Background */
     .main {background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%); font-family: 'Inter', sans-serif; color: #e0e0e0;}
-    
-    /* Glass Cards */
     .glass-card {
         background: rgba(30, 35, 60, 0.6);
         backdrop-filter: blur(12px);
@@ -27,27 +24,17 @@ st.markdown("""
         transition: all 0.3s ease;
     }
     .glass-card:hover {transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);}
-    
-    /* Headers */
     h1, h2, h3 {color: #00d4aa; text-shadow: 0 0 10px rgba(0, 212, 170, 0.3);}
-    
-    /* Metrics */
     .stMetric {background: rgba(0, 212, 170, 0.1); border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 12px; padding: 12px;}
     .stMetric > div:first-child {color: #00d4aa; font-weight: 600;}
-    
-    /* Sidebar */
     .css-1d391kg {background: rgba(20, 25, 45, 0.9); backdrop-filter: blur(10px);}
     .stSelectbox > div > div {background: rgba(40, 45, 70, 0.8); border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 12px;}
-    
-    /* Buttons */
     .stButton > button {
         background: linear-gradient(45deg, #00d4aa, #00b894);
         color: white; border: none; border-radius: 12px; padding: 10px 20px;
         font-weight: 600; transition: all 0.3s ease;
     }
     .stButton > button:hover {transform: scale(1.05); box-shadow: 0 0 20px rgba(0, 212, 170, 0.5);}
-    
-    /* DataFrame */
     .stDataFrame {border-radius: 12px; overflow: hidden;}
 </style>
 """, unsafe_allow_html=True)
@@ -85,7 +72,7 @@ if top:
     df["Symbol"] = df["Symbol"].str.upper()
 
     def safe_sparkline(spark):
-        if not spark or 'price' not in spark: return "───"
+        if not spark or 'price' not in spark or len(spark['price']) == 0: return "───"
         p = spark['price'][-20:]
         return ''.join(['█' if v > p[0] else '░' for v in p])[::-1]
     df["Trend"] = df["Trend"].apply(safe_sparkline)
@@ -101,10 +88,18 @@ ohlc = fetch(f"/coins/{coin_id}/ohlc?vs_currency=usd&days={days}")
 market = fetch(f"/coins/{coin_id}/market_chart?vs_currency=usd&days={days}")
 
 if ohlc and market:
+    # Candlestick
     df_c = pd.DataFrame(ohlc, columns=["time", "open", "high", "low", "close"])
     df_c["time"] = pd.to_datetime(df_c["time"], unit='ms')
-    df_v = pd.DataFrame(market['total_volumes'], columns=['time', 'volume'])
-    df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')
+
+    # === SAFE VOLUME HANDLING ===
+    if 'total_volumes' in market and market['total_volumes']:
+        df_v = pd.DataFrame(market['total_volumes'], columns=['time', 'volume'])
+        df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')
+    else:
+        df_v = pd.DataFrame({'time': df_c['time'], 'volume': [0]*len(df_c)})
+
+    # RSI
     prices = pd.DataFrame(market['prices'], columns=['time', 'price'])
     prices['time'] = pd.to_datetime(prices['time'], unit='ms')
     delta = prices['price'].diff()
@@ -114,6 +109,7 @@ if ohlc and market:
     rsi = 100 - (100 / (1 + rs))
     prices['rsi'] = rsi
 
+    # Subplots
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.03,
                         row_heights=[0.6, 0.2, 0.2])
     fig.add_trace(go.Candlestick(x=df_c['time'], open=df_c['open'], high=df_c['high'],
