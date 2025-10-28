@@ -88,7 +88,10 @@ def get_price_history(coin_id, days):
     
     if days == 1:
         interval = "1m"
-        limit = 1440  # 24h
+        limit = 1440
+    elif days == 7:
+        interval = "5m"
+        limit = 2016  # 7 days
     else:
         interval = "1d"
         limit = min(days, 1000)
@@ -167,25 +170,12 @@ with st.spinner("Loading price history..."):
 
 if not df.empty:
     fig = go.Figure()
-    if days == 1:
-        # 1D = Candlesticks
-        fig.add_trace(go.Candlestick(
-            x=df['ts'],
-            open=df['open'],
-            high=df['high'],
-            low=df['low'],
-            close=df['close'],
-            increasing_line_color='#00ff88',
-            decreasing_line_color='#ff6b6b'
-        ))
-    else:
-        # 7D+ = Line
-        fig.add_trace(go.Scatter(
-            x=df['ts'],
-            y=df['close'],
-            line=dict(color="#00d4aa", width=2),
-            mode='lines'
-        ))
+    fig.add_trace(go.Scatter(
+        x=df['ts'],
+        y=df['close'],
+        line=dict(color="#00d4aa", width=2),
+        mode='lines'
+    ))
     fig.update_layout(
         height=500,
         template="plotly_dark",
