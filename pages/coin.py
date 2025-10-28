@@ -97,18 +97,22 @@ def get_ohlc(cid, days):
 
 @st.cache_data(ttl=60)
 def get_market_chart(cid, days):
-    if days <= 365:
-        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
-        params = {"vs_currency": "usd", "days": days}
-    else:
+    headers = {"User-Agent": "NEXA/1.0"}
+    
+    # Use range endpoint for 1Y+ to avoid 400 error
+    if days > 365:
         url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart/range"
         from_ts = int((pd.Timestamp.now() - pd.Timedelta(days=days)).timestamp())
         to_ts = int(pd.Timestamp.now().timestamp())
         params = {"vs_currency": "usd", "from": from_ts, "to": to_ts}
+    else:
+        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
+        params = {"vs_currency": "usd", "days": days}
     
-    headers = {"User-Agent": "NEXA/1.0"}
     try:
         response = requests.get(url, params=params, headers=headers, timeout=10)
+        if response.status_code == 400:
+            return pd.DataFrame()
         response.raise_for_status()
         data = response.json()
         prices = data.get("prices", [])
@@ -217,7 +221,7 @@ else:
         )
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Price history unavailable.")
+        st.info(f"{selected_tf} data not available — coin launched less than {selected_tf} ago.")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
