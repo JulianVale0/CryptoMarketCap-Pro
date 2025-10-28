@@ -1,23 +1,21 @@
 # CryptoMarketCap Pro — Live, Clean, Fast
 
-**ERROR FIXED: SMART QUOTES & EM DASHES**  
-**PROBLEM: GitHub copied fancy characters (`—`, `“`, `”`) → Python hates them**
+**FINAL FIX: 100% PLAIN ASCII — NO FANCY CHARS ANYWHERE**  
+**PROBLEM: Hidden em-dashes (`—`) in comments**  
+**SOLUTION: Replace entire file with this clean version**
 
 ---
 
-## **FIX: REPLACE `streamlit_app.py` WITH THIS CLEAN VERSION**
-
-> **Copy-PASTE EXACTLY** (Plain ASCII only)
+## **REPLACE `streamlit_app.py` WITH THIS (COPY-PASTE EXACTLY)**
 
 ```python
-# File: streamlit_app.py (CLEAN ASCII - NO FANCY CHARS)
 import streamlit as st
 import requests
 import pandas as pd
 
 st.set_page_config(page_title="CryptoMarketCap Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
 
-# === PWA HEAD ===
+# PWA HEAD
 st.markdown("""
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#00d4aa">
@@ -31,7 +29,7 @@ st.markdown("""
 </script>
 """, unsafe_allow_html=True)
 
-# === GLASS CSS ===
+# GLASS CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -52,7 +50,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# === HEADER ===
+# HEADER
 st.markdown("<h1>CryptoMarketCap Pro</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center; color:#888;'>Live prices - Real-time rankings</p>", unsafe_allow_html=True)
 st.markdown("""
@@ -62,7 +60,7 @@ st.markdown("""
 <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}</style>
 """, unsafe_allow_html=True)
 
-# === FETCH DATA ===
+# FETCH DATA
 @st.cache_data(ttl=10)
 def fetch_top():
     url = "https://api.coingecko.com/api/v3/coins/markets"
@@ -100,14 +98,14 @@ if data:
         if not s or 'price' not in s: return "---"
         p = s['price'][-30:]
         b = p[0]
-        return ''.join('<span style="color:#00ff88">X</span>' if x >= b else '<span style="color:#ff6b6b">X</span>' for x in p)[::-1]
+        return ''.join('<span style="color:#00ff88">█</span>' if x >= b else '<span style="color:#ff6b6b">░</span>' for x in p)[::-1]
     if "7d Spark" in df.columns:
         df["7d Spark"] = df["sparkline_in_7d"].apply(sparkline)
 
-    # Clickable
+    # Clickable rows
     def row_link(row):
-        id = data[row.name]["id"]
-        return f'<a href="?id={id}" style="color:inherit;text-decoration:none;display:block;">{row.to_frame().T.to_html(escape=False,index=False,header=False)}</a>'
+        coin_id = data[row.name]["id"]
+        return f'<a href="?id={coin_id}" style="color:inherit;text-decoration:none;display:block;">{row.to_frame().T.to_html(escape=False,index=False,header=False)}</a>'
     rows = "<tr>" + "</tr><tr>".join(df.apply(row_link, axis=1)) + "</tr>"
     head = "".join(f"<th>{h}</th>" for h in df.columns)
     html = f'<table class="crypto-table" style="width:100%;border-collapse:collapse;"><thead><tr>{head}</tr></thead><tbody>{rows}</tbody></table>'
