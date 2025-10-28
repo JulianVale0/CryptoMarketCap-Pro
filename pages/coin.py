@@ -43,7 +43,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Back button + coin selection
+# === BACK BUTTON + COIN SELECTION ===
 if st.button("← Back to Rankings"):
     if "selected_coin" in st.session_state:
         del st.session_state.selected_coin
@@ -76,6 +76,7 @@ symbol_to_id = {
 }
 coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 
+# === API FUNCTIONS ===
 @st.cache_data(ttl=10)
 def get_detail(cid):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}"
@@ -97,9 +98,19 @@ def get_ohlc(cid, days):
     except:
         return pd.DataFrame()
 
-# === FETCH OHLC DATA ===
-ohlc = get_ohlc(coin_id, days)
+# === TIMEFRAME TOGGLE ===
+timeframes = {
+    "1D": 1,
+    "7D": 7,
+    "1M": 30,
+    "3M": 90,
+    "1Y": 365,
+    "5Y": 1825
+}
+selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)  # Default 7D
+days = timeframes[selected_tf]
 
+# === FETCH DATA ===
 with st.spinner("Loading coin data..."):
     detail = get_detail(coin_id)
 
@@ -120,8 +131,6 @@ spark = detail.get("market_data", {}).get("sparkline_in_7d", {}).get("price", []
 
 # === HEADER — ULTRA CLEAN & PREMIUM ===
 st.markdown("<div class='glass-card' style='padding: 32px 24px; text-align: center; margin-bottom: 24px;'>", unsafe_allow_html=True)
-
-# Icon + Name + Symbol
 col_icon, col_name, col_symbol = st.columns([1, 3, 1], gap="small")
 with col_icon:
     if img:
@@ -130,29 +139,36 @@ with col_name:
     st.markdown(f"<h1 style='margin:0; color:#00d4aa; text-shadow: 0 0 20px rgba(0,212,170,0.5); font-size: 2.8rem;'>{name}</h1>", unsafe_allow_html=True)
 with col_symbol:
     st.markdown(f"<h3 style='margin:0; color:#888; font-size: 1.4rem;'>{symbol}</h3>", unsafe_allow_html=True)
-
-# Price + Change
 change_cls = "price-up" if change >= 0 else "price-down"
-st.markdown(f"<h2 style='margin: 16px 0 0 0; font-size: 2.2rem;'>{price:,.4f} <span class='{change_cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
-
+st.markdown(f"<h2 style='margin: 16px 0 0 0; font-size: 2.2rem;'>${price:,.4f} <span class='{change_cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
-
-# === TIMEFRAME TOGGLE ===
-timeframes = {
-    "1D": 1,
-    "7D": 7,
-    "1M": 30,
-    "3M": 90,
-    "1Y": 365,
-    "5Y": 1825
-}
-selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)  # Default 7D
-days = timeframes[selected_tf]
 
 # === STATS IN GLASS CARDS ===
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("Market Cap", f"${cap/1e9:.2f}B" if cap else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c2:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("24h Volume", f"${vol/1e6:.1f}M" if vol else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c3:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("ATH", f"${ath:,.2f}" if ath else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c4:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("ATL", f"${atl:,.4f}" if atl else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
+
+# === CHART ===
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown(f"### {selected_tf} Price Action")
 
+ohlc = get_ohlc(coin_id, days)
 if not ohlc.empty:
     # RSI
     delta = ohlc["close"].diff()
@@ -160,7 +176,7 @@ if not ohlc.empty:
     loss = -delta.clip(upper=0).rolling(14).mean()
     rsi = 100 - (100 / (1 + gain / loss))
 
-    # === CANDLES — NEON LINES ONLY ===
+    # Candles
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
         x=ohlc['ts'],
@@ -183,7 +199,7 @@ if not ohlc.empty:
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-    # === RSI ===
+    # RSI
     fig_rsi = go.Figure()
     fig_rsi.add_trace(go.Scatter(
         x=ohlc['ts'],
@@ -209,12 +225,14 @@ else:
 
 st.markdown("</div>", unsafe_allow_html=True)
 
+# === 7D SPARKLINE ===
 def sparkline(p):
     if len(p) < 2: return "---"
     b = p[0]
     return ''.join('<span style="color:#00ff88">█</span>' if x >= b else '<span style="color:#ff6b6b">░</span>' for x in p[-30:])[::-1]
 st.markdown(f"<div class='glass-card'>7d Trend: {sparkline(spark)}</div>", unsafe_allow_html=True)
 
+# === LIVE BADGE ===
 st.markdown("""
 <div style='text-align:center; margin:20px 0;'>
   <span style='background:#00d4aa; color:#000; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:700; animation: pulse 2s infinite;'>
