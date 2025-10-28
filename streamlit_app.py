@@ -4,6 +4,7 @@ import pandas as pd
 
 st.set_page_config(page_title="CryptoMarketCap Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
 
+# PWA HEAD
 st.markdown("""
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#00d4aa">
@@ -17,6 +18,7 @@ st.markdown("""
 </script>
 """, unsafe_allow_html=True)
 
+# GLASS CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -28,8 +30,6 @@ st.markdown("""
     }
     .glass-card:hover {transform: translateY(-8px);}
     h1 {color: #00d4aa; text-shadow: 0 0 20px rgba(0,212,170,0.5);}
-    .crypto-table tr:hover {background: rgba(0,212,170,0.08);}
-    .crypto-table a {color: inherit; text-decoration: none; display: block;}
     .price-up {color: #00ff88; font-weight: 700;}
     .price-down {color: #ff6b6b; font-weight: 700;}
     .sparkline {font-family: monospace; font-size: 14px;}
@@ -37,6 +37,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# HEADER
 st.markdown("<h1>CryptoMarketCap Pro</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center; color:#888;'>Live prices - Real-time rankings</p>", unsafe_allow_html=True)
 st.markdown("""
@@ -46,6 +47,7 @@ st.markdown("""
 <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}</style>
 """, unsafe_allow_html=True)
 
+# FETCH DATA
 @st.cache_data(ttl=10)
 def fetch_top():
     url = "https://api.coingecko.com/api/v3/coins/markets"
@@ -67,10 +69,72 @@ with st.spinner("Loading live data..."):
     data = fetch_top()
 
 if data and len(data) > 0:
-    # === ALL YOUR TABLE CODE HERE (df, formatting, clickable rows) ===
-    # ... keep everything from df = pd.DataFrame(data) to st.markdown("</div>", unsafe_allow_html=True)
+    df = pd.DataFrame(data)
+    cols = {
+        "Name": "name",
+        "Symbol": "symbol",
+        "Price": "current_price",
+        "1h%": "price_change_percentage_1h_in_currency",
+        "24h%": "price_change_percentage_24h_in_currency",
+        "7d%": "price_change_percentage_7d_in_currency",
+        "Market Cap": "market_cap",
+        "Volume": "total_volume",
+        "7d Spark": "sparkline_in_7d"
+    }
+    df = df[[v for k, v in cols.items() if v in df.columns]].copy()
+    df.insert(0, "#", range(1, len(df) + 1))
+    df.columns = ["#"] + [k for k, v in cols.items() if v in df.columns]
+
+    # Format Price
+    if "Price" in df.columns:
+        df["Price"] = df["Price"].apply(lambda x: f"${x:,.6f}".rstrip("0").rstrip(".") if x < 1 else f"${x:,.2f}")
+    if "Market Cap" in df.columns:
+        df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B" if pd.notna(x) else "N/A")
+    if "Volume" in df.columns:
+        df["Volume"] = df["Volume"].apply(lambda x: f"${x/1e6:.1f}M" if pd.notna(x) else "N/A")
+
+    # % Color
+    def color(val):
+        if pd.isna(val): return "N/A"
+        return f"<span class='price-up'>{val:+.2f}%</span>" if val >= 0 else f"<span class='price-down'>{val:+.2f}%</span>"
+    for c in ["1h%", "24h%", "7d%"]:
+        if c in df.columns:
+            df[c] = df[c].apply(color)
+
+    # Sparkline
+    def sparkline(s):
+        if not s or 'price' not in s or len(s['price']) == 0:
+            return "---"
+        p = s['price'][-30:]
+        b = p[0]
+        return ''.join('<span style="color:#00ff88">█</span>' if x >= b else '<span style="color:#ff6b6b">░</span>' for x in p)[::-1]
+    if "7d Spark" in df.columns:
+        df["7d Spark"] = df["sparkline_in_7d"].apply(sparkline)
+
+    # === EXPANDABLE ROWS WITH VIEW BUTTON ===
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.markdown("## Top 100 Cryptocurrencies")
+
+    for idx, row in df.iterrows():
+        coin_id = data[idx]["id"]
+        with st.expander(f"#{row['#']} {row['Name']} {row['Symbol']} • ${row['Price']}"):
+            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 3, 1, 2, 1, 1, 1, 2])
+            with col1: st.write(row["#"])
+            with col2: st.write(row["Name"])
+            with col3: st.write(row["Symbol"])
+            with col4: st.write(row["Price"])
+            with col5: st.write(row.get("1h%", "N/A"))
+            with col6: st.write(row.get("24h%", "N/A"))
+            with col7: st.write(row.get("7d%", "N/A"))
+            with col8:
+                if st.button("View", key=f"view_{coin_id}"):
+                    st.experimental_set_query_params(id=coin_id)
+                    st.rerun()
+            st.write(row.get("7d Spark", "---"))
+
+    st.markdown("</div>", unsafe_allow_html=True)
 else:
     st.error("Failed to load data. Check internet or CoinGecko status. Retrying in 10s...")
-    st.rerun()  # Auto-retry
+    st.rerun()
 
 st.markdown("<div class='footer'>Live - Updates every 10s</div>", unsafe_allow_html=True)
