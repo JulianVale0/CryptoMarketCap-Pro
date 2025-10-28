@@ -69,8 +69,12 @@ def fetch_top():
 with st.spinner("Loading live data..."):
     data = fetch_top()
 
-if data and len(data) > 0:
-    df = pd.DataFrame(data)
+if not data or not isinstance(data, (list, tuple)):
+    st.error("Failed to load market data. Retrying...")
+    time.sleep(5)
+    st.rerun()
+  
+df = pd.DataFrame(data)
     cols = {
         "Name": "name",
         "Symbol": "symbol",
@@ -117,9 +121,9 @@ if data and len(data) > 0:
     st.markdown("## Top 100 Cryptocurrencies")
 
     for idx, row in df.iterrows():
-        if idx >= len(data):
-            continue
-        coin_id = data[idx].get("id", "unknown")
+    if idx >= len(data):
+        continue
+    coin_id = data[idx].get("id", "unknown") if isinstance(data[idx], dict) else "unknown"
         with st.expander(f"#{row['#']} {row['Name']} {row['Symbol']} • ${row['Price']}"):
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 3, 1, 2, 1, 1, 1, 2])
             with col1: st.write(row["#"])
