@@ -1,9 +1,7 @@
-# File: streamlit_app.py
+# File: streamlit_app.py (FINAL — COINMARKETCAP PRO)
 import streamlit as st
 import requests
 import pandas as pd
-import plotly.graph_objects as go
-from datetime import datetime
 
 # === PAGE CONFIG ===
 st.set_page_config(page_title="CryptoMarketCap Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
@@ -14,7 +12,6 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .main {background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%); font-family: 'Inter', sans-serif; color: #e0e0e0;}
     
-    /* Glass Cards */
     .glass-card {
         background: rgba(30, 35, 60, 0.7);
         backdrop-filter: blur(16px);
@@ -28,23 +25,17 @@ st.markdown("""
     }
     .glass-card:hover {transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0, 212, 170, 0.15);}
     
-    /* Headers */
     h1 {color: #00d4aa; text-shadow: 0 0 20px rgba(0, 212, 170, 0.5); font-weight: 700; letter-spacing: -1px;}
     h2 {color: #00ff88; font-weight: 600;}
     
-    /* Table */
     .stDataFrame {border: none; border-radius: 16px; overflow: hidden;}
-    .stDataFrame > div {background: transparent;}
     .row:hover {background: rgba(0, 212, 170, 0.05) !important; transition: 0.3s;}
     
-    /* Price Badge */
     .price-up {color: #00ff88; font-weight: 700; text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);}
     .price-down {color: #ff6b6b; font-weight: 700; text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);}
     
-    /* Sparkline */
     .sparkline {font-family: monospace; font-size: 14px; letter-spacing: 1px;}
     
-    /* Footer */
     .footer {text-align: center; color: #666; font-size: 14px; margin-top: 60px;}
 </style>
 """, unsafe_allow_html=True)
@@ -74,9 +65,13 @@ def fetch_top():
 data = fetch_top()
 if data:
     df = pd.DataFrame(data)
-    df = df[["rank", "name", "symbol", "current_price", "price_change_percentage_1h_in_currency",
+    # Use index + 1 for rank
+    df = df.reset_index(drop=True)
+    df = df[["name", "symbol", "current_price", "price_change_percentage_1h_in_currency",
              "price_change_percentage_24h_in_currency", "price_change_percentage_7d_in_currency",
-             "market_cap", "total_volume", "sparkline_in_7d"]]
+             "market_cap", "total_volume", "sparkline_in_7d"]].copy()
+    df.insert(0, "#", range(1, len(df) + 1))  # Add rank
+
     df.columns = ["#", "Name", "Symbol", "Price", "1h%", "24h%", "7d%", "Market Cap", "Volume", "7d Spark"]
 
     # Format
@@ -95,7 +90,7 @@ if data:
 
     # Sparkline
     def sparkline(spark):
-        if not spark or 'price' not in spark: return "───"
+        if not spark or 'price' not in spark or len(spark['price']) == 0: return "───"
         prices = spark['price'][-30:]
         first = prices[0]
         return ''.join(['<span style="color:#00ff88">█</span>' if p > first else '<span style="color:#666">░</span>' for p in prices])[::-1]
@@ -104,7 +99,7 @@ if data:
     # Render
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     st.markdown("## Top 100 Cryptocurrencies")
-    html = df.to_html(escape=False, index=False, classes="stDataFrame")
+    html = df.to_html(escape=False, index=False)
     st.markdown(html, unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 else:
