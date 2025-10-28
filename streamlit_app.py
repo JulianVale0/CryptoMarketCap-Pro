@@ -1,317 +1,114 @@
-# File: streamlit_app.py (FINAL — NO ERRORS)
+# File: streamlit_app.py
 import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+from datetime import datetime
 
 # === PAGE CONFIG ===
-st.set_page_config(page_title="Crypto Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="CryptoMarketCap Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
 
-# === SMOOTH MODERN CSS ===
+# === ULTRA-SMOOTH GLASS UI ===
 st.markdown("""
 <style>
-    .main {background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%); font-family: 'Inter', sans-serif; color: #e0e0e0;}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    .main {background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%); font-family: 'Inter', sans-serif; color: #e0e0e0;}
+    
+    /* Glass Cards */
     .glass-card {
-        background: rgba(30, 35, 60, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 20px;
-        margin: 10px 0;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s ease;
+        background: rgba(30, 35, 60, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 20px;
+        border: 1px solid rgba(0, 212, 170, 0.2);
+        padding: 24px;
+        margin: 16px 0;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
-    .glass-card:hover {transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);}
-    h1, h2, h3 {color: #00d4aa; text-shadow: 0 0 10px rgba(0, 212, 170, 0.3);}
-    .stMetric {background: rgba(0, 212, 170, 0.1); border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 12px; padding: 12px;}
-    .stMetric > div:first-child {color: #00d4aa; font-weight: 600;}
-    .css-1d391kg {background: rgba(20, 25, 45, 0.9); backdrop-filter: blur(10px);}
-    .stSelectbox > div > div {background: rgba(40, 45, 70, 0.8); border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 12px;}
-    .stButton > button {
-        background: linear-gradient(45deg, #00d4aa, #00b894);
-        color: white; border: none; border-radius: 12px; padding: 10px 20px;
-        font-weight: 600; transition: all 0.3s ease;
-    }
-    .stButton > button:hover {transform: scale(1.05); box-shadow: 0 0 20px rgba(0, 212, 170, 0.5);}
-    .stDataFrame {border-radius: 12px; overflow: hidden;}
+    .glass-card:hover {transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0, 212, 170, 0.15);}
+    
+    /* Headers */
+    h1 {color: #00d4aa; text-shadow: 0 0 20px rgba(0, 212, 170, 0.5); font-weight: 700; letter-spacing: -1px;}
+    h2 {color: #00ff88; font-weight: 600;}
+    
+    /* Table */
+    .stDataFrame {border: none; border-radius: 16px; overflow: hidden;}
+    .stDataFrame > div {background: transparent;}
+    .row:hover {background: rgba(0, 212, 170, 0.05) !important; transition: 0.3s;}
+    
+    /* Price Badge */
+    .price-up {color: #00ff88; font-weight: 700; text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);}
+    .price-down {color: #ff6b6b; font-weight: 700; text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);}
+    
+    /* Sparkline */
+    .sparkline {font-family: monospace; font-size: 14px; letter-spacing: 1px;}
+    
+    /* Footer */
+    .footer {text-align: center; color: #666; font-size: 14px; margin-top: 60px;}
 </style>
 """, unsafe_allow_html=True)
 
-# === SIDEBAR ===
-with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #00d4aa;'>Crypto Pro</h2>", unsafe_allow_html=True)
-    coin_options = {
-        "Bitcoin": "bitcoin", "Ethereum": "ethereum", "Solana": "solana",
-        "BNB": "binancecoin", "XRP": "ripple", "Cardano": "cardano",
-        "Dogecoin": "dogecoin", "Avalanche": "avalanche-2"
-    }
-    coin_name = st.selectbox("Select Coin", list(coin_options.keys()))
-    coin_id = coin_options[coin_name]
-    timeframe = st.selectbox("Timeframe", ["1D", "7D", "30D", "90D", "1Y"])
+# === HEADER ===
+st.markdown("<h1>CryptoMarketCap Pro</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#888;'>Live prices • Real-time rankings • Smooth experience</p>", unsafe_allow_html=True)
 
 # === API FETCH ===
 @st.cache_data(ttl=10)
-def fetch(endpoint):
+def fetch_top():
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": "usd",
+        "order": "market_cap_desc",
+        "per_page": 100,
+        "page": 1,
+        "sparkline": True,
+        "price_change_percentage": "1h,24h,7d"
+    }
     try:
-        return requests.get(f"https://api.coingecko.com/api/v3{endpoint}", timeout=10).json()
+        return requests.get(url, params=params, timeout=15).json()
     except:
         return None
 
-# === TOP 10 (GLASS CARD) ===
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown("## Top 10 Coins")
-top = fetch("/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=true")
-if top:
-    df = pd.DataFrame(top)[["name", "symbol", "current_price", "price_change_percentage_24h", "market_cap", "sparkline_in_7d"]]
-    df.columns = ["Name", "Symbol", "Price", "24h %", "Market Cap", "Trend"]
-    df["Price"] = df["Price"].apply(lambda x: f"${x:,.2f}")
-    df["24h %"] = df["24h %"].apply(lambda x: f"<span style='color:{'lime' if x>=0 else '#ff6b6b'}; font-weight:bold'>{x:+.2f}%</span>" if pd.notnull(x) else "N/A")
+# === LIVE DATA ===
+data = fetch_top()
+if data:
+    df = pd.DataFrame(data)
+    df = df[["rank", "name", "symbol", "current_price", "price_change_percentage_1h_in_currency",
+             "price_change_percentage_24h_in_currency", "price_change_percentage_7d_in_currency",
+             "market_cap", "total_volume", "sparkline_in_7d"]]
+    df.columns = ["#", "Name", "Symbol", "Price", "1h%", "24h%", "7d%", "Market Cap", "Volume", "7d Spark"]
+
+    # Format
+    df["Price"] = df["Price"].apply(lambda x: f"${x:,.4f}" if x < 1 else f"${x:,.2f}")
     df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B")
-    df["Symbol"] = df["Symbol"].str.upper()
+    df["Volume"] = df["Volume"].apply(lambda x: f"${x/1e6:.1f}M")
+    
+    # Price change badges
+    def color_change(val):
+        if pd.isna(val): return "N/A"
+        color = "price-up" if val >= 0 else "price-down"
+        return f"<span class='{color}'>{val:+.2f}%</span>"
+    df["1h%"] = df["1h%"].apply(color_change)
+    df["24h%"] = df["24h%"].apply(color_change)
+    df["7d%"] = df["7d%"].apply(color_change)
 
-    def safe_sparkline(spark):
-        if not spark or 'price' not in spark or len(spark['price']) == 0: return "───"
-        p = spark['price'][-20:]
-        return ''.join(['█' if v > p[0] else '░' for v in p])[::-1]
-    df["Trend"] = df["Trend"].apply(safe_sparkline)
+    # Sparkline
+    def sparkline(spark):
+        if not spark or 'price' not in spark: return "───"
+        prices = spark['price'][-30:]
+        first = prices[0]
+        return ''.join(['<span style="color:#00ff88">█</span>' if p > first else '<span style="color:#666">░</span>' for p in prices])[::-1]
+    df["7d Spark"] = df["7d Spark"].apply(sparkline)
 
-    st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# === PRO CHART — BULLETPROOF (ALL MS) ===
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown(f"## {coin_name} Pro Chart")
-days = {"1D":1, "7D":7, "30D":30, "90D":90, "1Y":365}[timeframe]
-market = fetch(f"/coins/{coin_id}/market_chart?vs_currency=usd&days={days}")
-
-if market and 'prices' in market and market['prices']:
-    # PRICE DATA (ms)
-    prices = pd.DataFrame(market['prices'], columns=['time', 'price'])
-    prices['time'] = pd.to_datetime(prices['time'], unit='ms')
-
-    # FAKE OHLC
-    df_c = prices.copy()
-    df_c['open'] = df_c['high'] = df_c['low'] = df_c['close'] = df_c['price']
-
-    # VOLUME (ms)
-    df_v = pd.DataFrame(
-        market.get('total_volumes', [[t, 0] for t in prices['time'].astype('int64')]),
-        columns=['time', 'volume']
-    )
-    df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')
-
-    # RSI
-    delta = prices['price'].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = -delta.where(delta < 0, 0).rolling(14).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    prices['rsi'] = rsi.fillna(50)
-
-    # PLOT
-    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.03,
-                        row_heights=[0.6, 0.2, 0.2])
-    fig.add_trace(go.Candlestick(
-        x=df_c['time'],
-        open=df_c['open'],
-        high=df_c['high'],
-        low=df_c['low'],
-        close=df_c['close'],
-        name="Price",
-        increasing_line_color='#00ff88',
-        decreasing_line_color='#ff6b6b'
-    ), row=1, col=1)
-    fig.add_trace(go.Bar(x=df_v['time'], y=df_v['volume'], name="Volume", marker_color='rgba(68, 87, 119, 0.6)'), row=2, col=1)
-    fig.add_trace(go.Scatter(x=prices['time'], y=prices['rsi'], name="RSI", line=dict(color='#ffaa00', width=2)), row=3, col=1)
-    fig.add_hline(y=70, line_dash="dot", line_color="#ff6b6b", row=3, col=1)
-    fig.add_hline(y=30, line_dash="dot", line_color="#00ff88", row=3, col=1)
-
-    fig.update_layout(height=700, template="plotly_dark", xaxis_rangeslider_visible=False,
-                      margin=dict(l=40, r=40, t=60, b=40), showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
+    # Render
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.markdown("## Top 100 Cryptocurrencies")
+    html = df.to_html(escape=False, index=False, classes="stDataFrame")
+    st.markdown(html, unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 else:
-    st.info("Loading chart data...")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# === PORTFOLIO ===
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown("## Portfolio Tracker")
-with st.expander("Add Holdings"):
-    portfolio = {}
-    for name, cid in coin_options.items():
-        amt = st.number_input(name, min_value=0.0, value=0.0, step=0.001, key=cid)
-        if amt > 0:
-            price_data = fetch(f"/simple/price?ids={cid}&vs_currencies=usd")
-            if price_data and cid in price_data:
-                portfolio[name] = amt * price_data[cid]["usd"]
-    if portfolio:
-        total = sum(portfolio.values())
-        st.metric("**Total Value**", f"${total:,.2f}")
-        df_p = pd.DataFrame(list(portfolio.items()), columns=["Coin", "Value"])
-        df_p["Value"] = df_p["Value"].apply(lambda x: f"${x:,.2f}")
-        st.dataframe(df_p, hide_index=True)
-st.markdown("</div>", unsafe_allow_html=True)
+    st.error("Failed to load data. Retrying in 10s...")
 
 # === FOOTER ===
-st.markdown("<p style='text-align: center; color: #888; margin-top: 40px;'>Live • Auto-updates • Built with ❤️</p>", unsafe_allow_html=True)# File: streamlit_app.py (FINAL — NO ERRORS)
-import streamlit as st
-import requests
-import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-
-# === PAGE CONFIG ===
-st.set_page_config(page_title="Crypto Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
-
-# === SMOOTH MODERN CSS ===
-st.markdown("""
-<style>
-    .main {background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 100%); font-family: 'Inter', sans-serif; color: #e0e0e0;}
-    .glass-card {
-        background: rgba(30, 35, 60, 0.6);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border-radius: 16px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        padding: 20px;
-        margin: 10px 0;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s ease;
-    }
-    .glass-card:hover {transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);}
-    h1, h2, h3 {color: #00d4aa; text-shadow: 0 0 10px rgba(0, 212, 170, 0.3);}
-    .stMetric {background: rgba(0, 212, 170, 0.1); border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 12px; padding: 12px;}
-    .stMetric > div:first-child {color: #00d4aa; font-weight: 600;}
-    .css-1d391kg {background: rgba(20, 25, 45, 0.9); backdrop-filter: blur(10px);}
-    .stSelectbox > div > div {background: rgba(40, 45, 70, 0.8); border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 12px;}
-    .stButton > button {
-        background: linear-gradient(45deg, #00d4aa, #00b894);
-        color: white; border: none; border-radius: 12px; padding: 10px 20px;
-        font-weight: 600; transition: all 0.3s ease;
-    }
-    .stButton > button:hover {transform: scale(1.05); box-shadow: 0 0 20px rgba(0, 212, 170, 0.5);}
-    .stDataFrame {border-radius: 12px; overflow: hidden;}
-</style>
-""", unsafe_allow_html=True)
-
-# === SIDEBAR ===
-with st.sidebar:
-    st.markdown("<h2 style='text-align: center; color: #00d4aa;'>Crypto Pro</h2>", unsafe_allow_html=True)
-    coin_options = {
-        "Bitcoin": "bitcoin", "Ethereum": "ethereum", "Solana": "solana",
-        "BNB": "binancecoin", "XRP": "ripple", "Cardano": "cardano",
-        "Dogecoin": "dogecoin", "Avalanche": "avalanche-2"
-    }
-    coin_name = st.selectbox("Select Coin", list(coin_options.keys()))
-    coin_id = coin_options[coin_name]
-    timeframe = st.selectbox("Timeframe", ["1D", "7D", "30D", "90D", "1Y"])
-
-# === API FETCH ===
-@st.cache_data(ttl=10)
-def fetch(endpoint):
-    try:
-        return requests.get(f"https://api.coingecko.com/api/v3{endpoint}", timeout=10).json()
-    except:
-        return None
-
-# === TOP 10 (GLASS CARD) ===
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown("## Top 10 Coins")
-top = fetch("/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=true")
-if top:
-    df = pd.DataFrame(top)[["name", "symbol", "current_price", "price_change_percentage_24h", "market_cap", "sparkline_in_7d"]]
-    df.columns = ["Name", "Symbol", "Price", "24h %", "Market Cap", "Trend"]
-    df["Price"] = df["Price"].apply(lambda x: f"${x:,.2f}")
-    df["24h %"] = df["24h %"].apply(lambda x: f"<span style='color:{'lime' if x>=0 else '#ff6b6b'}; font-weight:bold'>{x:+.2f}%</span>" if pd.notnull(x) else "N/A")
-    df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B")
-    df["Symbol"] = df["Symbol"].str.upper()
-
-    def safe_sparkline(spark):
-        if not spark or 'price' not in spark or len(spark['price']) == 0: return "───"
-        p = spark['price'][-20:]
-        return ''.join(['█' if v > p[0] else '░' for v in p])[::-1]
-    df["Trend"] = df["Trend"].apply(safe_sparkline)
-
-    st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# === PRO CHART — BULLETPROOF (ALL MS) ===
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown(f"## {coin_name} Pro Chart")
-days = {"1D":1, "7D":7, "30D":30, "90D":90, "1Y":365}[timeframe]
-market = fetch(f"/coins/{coin_id}/market_chart?vs_currency=usd&days={days}")
-
-if market and 'prices' in market and market['prices']:
-    # PRICE DATA (ms)
-    prices = pd.DataFrame(market['prices'], columns=['time', 'price'])
-    prices['time'] = pd.to_datetime(prices['time'], unit='ms')
-
-    # FAKE OHLC
-    df_c = prices.copy()
-    df_c['open'] = df_c['high'] = df_c['low'] = df_c['close'] = df_c['price']
-
-    # VOLUME (ms)
-    df_v = pd.DataFrame(
-        market.get('total_volumes', [[t, 0] for t in prices['time'].astype('int64')]),
-        columns=['time', 'volume']
-    )
-    df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')
-
-    # RSI
-    delta = prices['price'].diff()
-    gain = delta.where(delta > 0, 0).rolling(14).mean()
-    loss = -delta.where(delta < 0, 0).rolling(14).mean()
-    rs = gain / loss
-    rsi = 100 - (100 / (1 + rs))
-    prices['rsi'] = rsi.fillna(50)
-
-    # PLOT
-    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.03,
-                        row_heights=[0.6, 0.2, 0.2])
-    fig.add_trace(go.Candlestick(
-        x=df_c['time'],
-        open=df_c['open'],
-        high=df_c['high'],
-        low=df_c['low'],
-        close=df_c['close'],
-        name="Price",
-        increasing_line_color='#00ff88',
-        decreasing_line_color='#ff6b6b'
-    ), row=1, col=1)
-    fig.add_trace(go.Bar(x=df_v['time'], y=df_v['volume'], name="Volume", marker_color='rgba(68, 87, 119, 0.6)'), row=2, col=1)
-    fig.add_trace(go.Scatter(x=prices['time'], y=prices['rsi'], name="RSI", line=dict(color='#ffaa00', width=2)), row=3, col=1)
-    fig.add_hline(y=70, line_dash="dot", line_color="#ff6b6b", row=3, col=1)
-    fig.add_hline(y=30, line_dash="dot", line_color="#00ff88", row=3, col=1)
-
-    fig.update_layout(height=700, template="plotly_dark", xaxis_rangeslider_visible=False,
-                      margin=dict(l=40, r=40, t=60, b=40), showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("Loading chart data...")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# === PORTFOLIO ===
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown("## Portfolio Tracker")
-with st.expander("Add Holdings"):
-    portfolio = {}
-    for name, cid in coin_options.items():
-        amt = st.number_input(name, min_value=0.0, value=0.0, step=0.001, key=cid)
-        if amt > 0:
-            price_data = fetch(f"/simple/price?ids={cid}&vs_currencies=usd")
-            if price_data and cid in price_data:
-                portfolio[name] = amt * price_data[cid]["usd"]
-    if portfolio:
-        total = sum(portfolio.values())
-        st.metric("**Total Value**", f"${total:,.2f}")
-        df_p = pd.DataFrame(list(portfolio.items()), columns=["Coin", "Value"])
-        df_p["Value"] = df_p["Value"].apply(lambda x: f"${x:,.2f}")
-        st.dataframe(df_p, hide_index=True)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# === FOOTER ===
-st.markdown("<p style='text-align: center; color: #888; margin-top: 40px;'>Live • Auto-updates • Built with ❤️</p>", unsafe_allow_html=True)
+st.markdown("<div class='footer'>Live • Auto-updates every 10s • Built with ❤️ by Grok</div>", unsafe_allow_html=True)
