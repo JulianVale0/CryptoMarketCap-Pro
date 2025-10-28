@@ -5,7 +5,6 @@ import pandas as pd
 
 st.set_page_config(page_title="CryptoMarketCap Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
 
-# PWA HEAD
 st.markdown("""
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#00d4aa">
@@ -19,7 +18,6 @@ st.markdown("""
 </script>
 """, unsafe_allow_html=True)
 
-# GLASS CSS
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -40,7 +38,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# HEADER
 st.markdown("<h1>CryptoMarketCap Pro</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center; color:#888;'>Live prices - Real-time rankings</p>", unsafe_allow_html=True)
 st.markdown("""
@@ -50,7 +47,6 @@ st.markdown("""
 <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}</style>
 """, unsafe_allow_html=True)
 
-# FETCH DATA
 @st.cache_data(ttl=10)
 def fetch_top():
     url = "https://api.coingecko.com/api/v3/coins/markets"
@@ -68,7 +64,6 @@ if data:
     df.insert(0, "#", range(1, len(df)+1))
     df.columns = ["#"] + [k for k,v in cols.items() if v in df.columns]
 
-    # Format
     if "Price" in df.columns:
         df["Price"] = df["Price"].apply(lambda x: f"${x:,.6f}".rstrip("0").rstrip(".") if x < 1 else f"${x:,.2f}")
     if "Market Cap" in df.columns:
@@ -76,14 +71,12 @@ if data:
     if "Volume" in df.columns:
         df["Volume"] = df["Volume"].apply(lambda x: f"${x/1e6:.1f}M" if pd.notna(x) else "N/A")
 
-    # % color
     def color(val):
         if pd.isna(val): return "N/A"
         return f"<span class='price-up'>{val:+.2f}%</span>" if val >= 0 else f"<span class='price-down'>{val:+.2f}%</span>"
     for c in ["1h%", "24h%", "7d%"]:
         if c in df.columns: df[c] = df[c].apply(color)
 
-    # Sparkline
     def sparkline(s):
         if not s or 'price' not in s: return "---"
         p = s['price'][-30:]
@@ -92,7 +85,6 @@ if data:
     if "7d Spark" in df.columns:
         df["7d Spark"] = df["sparkline_in_7d"].apply(sparkline)
 
-    # Clickable rows
     def row_link(row):
         coin_id = data[row.name]["id"]
         return f'<a href="?id={coin_id}" style="color:inherit;text-decoration:none;display:block;">{row.to_frame().T.to_html(escape=False,index=False,header=False)}</a>'
