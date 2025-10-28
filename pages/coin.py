@@ -62,7 +62,7 @@ symbol_to_id = {
 coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 
 # ----------------------------------------------------------------------
-# 4. FETCH DETAIL (CoinGecko – only for header info)
+# 4. FETCH DETAIL (CoinGecko – header)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_detail(cid):
@@ -113,7 +113,7 @@ st.markdown(
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
-# 6. TIMEFRAME SELECTOR
+# 6. TIMEFRAME + CHART TYPE
 # ----------------------------------------------------------------------
 timeframes = {
     "1D": 1,
@@ -126,12 +126,13 @@ timeframes = {
 selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)
 days = timeframes[selected_tf]
 
+chart_type = st.radio("Chart Type", ["Line", "Candles"], horizontal=True)
+
 # ----------------------------------------------------------------------
 # 7. PRICE HISTORY (Binance.US)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_price_history(cid, days):
-    # Binance.US symbols (USDT → USD for US exchange)
     symbol_map = {
         "bitcoin": "BTCUSD", "ethereum": "ETHUSD", "binancecoin": "BNBUSD", "solana": "SOLUSD",
         "ripple": "XRPUSD", "cardano": "ADAUSD", "dogecoin": "DOGEUSD", "tron": "TRXUSD",
@@ -140,19 +141,19 @@ def get_price_history(cid, days):
     }
     symbol = symbol_map.get(cid, cid.upper() + "USD")
 
-    # Choose interval & limit for the exact period
+    # Choose interval & limit
     if days == 1:
-        interval, limit = "1m", 1440               # 24 h
+        interval, limit = "1m", 1440
     elif days == 7:
-        interval, limit = "5m", 2016               # 7 days
+        interval, limit = "5m", 2016
     elif days == 30:
-        interval, limit = "1h", 720                # 30 days
+        interval, limit = "1h", 720
     elif days == 90:
-        interval, limit = "4h", 540                # 90 days
+        interval, limit = "4h", 540
     elif days == 365:
         interval, limit = "1d", 365
     elif days == 1825:
-        interval, limit = "1d", 1000               # Binance max 1000 → we’ll slice later
+        interval, limit = "1d", 1000
     else:
         interval, limit = "1d", min(days, 1000)
 
@@ -177,8 +178,7 @@ def get_price_history(cid, days):
         df["ts"] = pd.to_datetime(df["ts"], unit="ms")
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
 
-        # ---- ENSURE EXACT PERIOD ----
-        # Binance returns oldest first → sort & slice the **last `days`** points
+        # Slice last `days` points
         df = df.sort_values("ts").tail(days).reset_index(drop=True)
         return df
     except Exception as e:
@@ -196,8 +196,8 @@ with st.spinner("Loading price history..."):
 
 if not df.empty:
     fig = go.Figure()
-    # 1D & 7D → candlesticks, everything else → line
-    if days <= 7:
+
+    if chart_type == "Candles":
         fig.add_trace(
             go.Candlestick(
                 x=df["ts"],
@@ -218,6 +218,7 @@ if not df.empty:
                 mode="lines",
             )
         )
+
     fig.update_layout(
         height=500,
         template="plotly_dark",
