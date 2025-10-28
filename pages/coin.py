@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
-import time
 
 st.set_page_config(page_title="NEXA • Coin Detail", layout="wide")
 
@@ -78,41 +77,11 @@ def get_detail(cid):
         return None
 
 @st.cache_data(ttl=60)
-def get_ohlc(cid, days):
-    if days not in [1, 7]:
-        return pd.DataFrame()
-    url = f"https://api.coingecko.com/api/v3/coins/{cid}/ohlc"
+def get_price_history(cid, days):
+    url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
     headers = {"User-Agent": "NEXA/1.0"}
     try:
         response = requests.get(url, params={"vs_currency": "usd", "days": days}, headers=headers, timeout=10)
-        response.raise_for_status()
-        d = response.json()
-        if not d:
-            return pd.DataFrame()
-        df = pd.DataFrame(d, columns=["ts", "open", "high", "low", "close"])
-        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        return df
-    except:
-        return pd.DataFrame()
-
-@st.cache_data(ttl=60)
-def get_market_chart(cid, days):
-    headers = {"User-Agent": "NEXA/1.0"}
-    
-    # Use range endpoint for 1Y+ to avoid 400 error
-    if days > 365:
-        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart/range"
-        from_ts = int((pd.Timestamp.now() - pd.Timedelta(days=days)).timestamp())
-        to_ts = int(pd.Timestamp.now().timestamp())
-        params = {"vs_currency": "usd", "from": from_ts, "to": to_ts}
-    else:
-        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
-        params = {"vs_currency": "usd", "days": days}
-    
-    try:
-        response = requests.get(url, params=params, headers=headers, timeout=10)
-        if response.status_code == 400:
-            return pd.DataFrame()
         response.raise_for_status()
         data = response.json()
         prices = data.get("prices", [])
@@ -172,56 +141,29 @@ days = timeframes[selected_tf]
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown(f"### {selected_tf} Price Action")
 
-if days in [1, 7]:
-    with st.spinner("Loading OHLC chart..."):
-        ohlc = get_ohlc(coin_id, days)
-    if not ohlc.empty:
-        fig = go.Figure()
-        fig.add_trace(go.Candlestick(
-            x=ohlc['ts'],
-            open=ohlc['open'],
-            high=ohlc['high'],
-            low=ohlc['low'],
-            close=ohlc['close'],
-            increasing_line_color='#00ff88',
-            decreasing_line_color='#ff6b6b'
-        ))
-        fig.update_layout(
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            height=500,
-            margin=dict(l=0, r=0, t=40, b=0),
-            xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
-            yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
-            font=dict(family="Inter", color="#e0e0e0")
-        )
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-    else:
-        st.info("OHLC data not available.")
+with st.spinner("Loading price history..."):
+    df = get_price_history(coin_id, days)
+
+if not df.empty:
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=df['ts'],
+        y=df['price'],
+        line=dict(color="#00d4aa", width=2),
+        mode='lines'
+    ))
+    fig.update_layout(
+        height=500,
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        font=dict(family="Inter", color="#e0e0e0")
+    )
+    st.plotly_chart(fig, use_container_width=True)
 else:
-    with st.spinner("Loading price history..."):
-        df = get_market_chart(coin_id, days)
-    if not df.empty:
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=df['ts'],
-            y=df['price'],
-            line=dict(color="#00d4aa", width=2),
-            mode='lines'
-        ))
-        fig.update_layout(
-            height=500,
-            template="plotly_dark",
-            paper_bgcolor="rgba(0,0,0,0)",
-            plot_bgcolor="rgba(0,0,0,0)",
-            xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
-            yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
-            font=dict(family="Inter", color="#e0e0e0")
-        )
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info(f"{selected_tf} data not available — coin launched less than {selected_tf} ago.")
+    st.info("Chart data unavailable.")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
