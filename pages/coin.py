@@ -78,7 +78,7 @@ def get_detail(cid):
 
 @st.cache_data(ttl=60)
 def get_price_history(cid, days):
-    api_url = "https://cryptomarketcap-pro-production.up.railway.app/ohlc/bitcoin"  # ← YOUR RAILWAY URL
+    api_url = "https://cryptomarketcap-pro-production.up.railway.app"  # ← YOUR RAILWAY URL
     try:
         response = requests.get(f"{api_url}/ohlc/{cid}", params={"days": days}, timeout=10)
         data = response.json().get("data", [])
