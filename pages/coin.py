@@ -98,18 +98,6 @@ def get_ohlc(cid, days):
     except:
         return pd.DataFrame()
 
-# === TIMEFRAME TOGGLE ===
-timeframes = {
-    "1D": 1,
-    "7D": 7,
-    "1M": 30,
-    "3M": 90,
-    "1Y": 365,
-    "5Y": 1825
-}
-selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)  # Default 7D
-days = timeframes[selected_tf]
-
 # === FETCH DATA ===
 with st.spinner("Loading coin data..."):
     detail = get_detail(coin_id)
@@ -143,26 +131,17 @@ change_cls = "price-up" if change >= 0 else "price-down"
 st.markdown(f"<h2 style='margin: 16px 0 0 0; font-size: 2.2rem;'>${price:,.4f} <span class='{change_cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
-# === STATS IN GLASS CARDS ===
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-c1, c2, c3, c4 = st.columns(4)
-with c1:
-    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
-    st.metric("Market Cap", f"${cap/1e9:.2f}B" if cap else "N/A")
-    st.markdown("</div>", unsafe_allow_html=True)
-with c2:
-    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
-    st.metric("24h Volume", f"${vol/1e6:.1f}M" if vol else "N/A")
-    st.markdown("</div>", unsafe_allow_html=True)
-with c3:
-    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
-    st.metric("ATH", f"${ath:,.2f}" if ath else "N/A")
-    st.markdown("</div>", unsafe_allow_html=True)
-with c4:
-    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
-    st.metric("ATL", f"${atl:,.4f}" if atl else "N/A")
-    st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
+# === TIMEFRAME TOGGLE (AFTER HEADER, BEFORE CHART) ===
+timeframes = {
+    "1D": 1,
+    "7D": 7,
+    "1M": 30,
+    "3M": 90,
+    "1Y": 365,
+    "5Y": 1825
+}
+selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)
+days = timeframes[selected_tf]
 
 # === CHART ===
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
@@ -170,13 +149,6 @@ st.markdown(f"### {selected_tf} Price Action")
 
 ohlc = get_ohlc(coin_id, days)
 if not ohlc.empty:
-    # RSI
-    delta = ohlc["close"].diff()
-    gain = delta.clip(lower=0).rolling(14).mean()
-    loss = -delta.clip(upper=0).rolling(14).mean()
-    rsi = 100 - (100 / (1 + gain / loss))
-
-    # Candles
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
         x=ohlc['ts'],
@@ -198,31 +170,30 @@ if not ohlc.empty:
         font=dict(family="Inter", color="#e0e0e0")
     )
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-    # RSI
-    fig_rsi = go.Figure()
-    fig_rsi.add_trace(go.Scatter(
-        x=ohlc['ts'],
-        y=rsi,
-        line=dict(color="#00d4aa", width=2),
-        name="RSI"
-    ))
-    fig_rsi.add_hline(y=70, line_dash="dash", line_color="#ff6b6b", annotation_text="Overbought")
-    fig_rsi.add_hline(y=30, line_dash="dash", line_color="#00ff88", annotation_text="Oversold")
-    fig_rsi.update_layout(
-        height=200,
-        margin=dict(l=0, r=0, t=20, b=0),
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(showgrid=False),
-        yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', range=[0, 100]),
-        font=dict(family="Inter", color="#e0e0e0")
-    )
-    st.plotly_chart(fig_rsi, use_container_width=True, config={'displayModeBar': False})
 else:
     st.info("Chart loading...")
 
+st.markdown("</div>", unsafe_allow_html=True)
+
+# === METRICS UNDERNEATH CHART ===
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+c1, c2, c3, c4 = st.columns(4)
+with c1:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("Market Cap", f"${cap/1e9:.2f}B" if cap else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c2:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("24h Volume", f"${vol/1e6:.1f}M" if vol else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c3:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("ATH", f"${ath:,.2f}" if ath else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
+with c4:
+    st.markdown("<div class='metric-glass'>", unsafe_allow_html=True)
+    st.metric("ATL", f"${atl:,.4f}" if atl else "N/A")
+    st.markdown("</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
 # === 7D SPARKLINE ===
