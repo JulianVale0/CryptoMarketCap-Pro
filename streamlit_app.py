@@ -1,4 +1,4 @@
-# File: streamlit_app.py (FIXED + SMOOTH UI)
+# File: streamlit_app.py (FINAL BULLETPROOF + SMOOTH UI)
 import streamlit as st
 import requests
 import pandas as pd
@@ -87,17 +87,18 @@ days = {"1D":1, "7D":7, "30D":30, "90D":90, "1Y":365}[timeframe]
 ohlc = fetch(f"/coins/{coin_id}/ohlc?vs_currency=usd&days={days}")
 market = fetch(f"/coins/{coin_id}/market_chart?vs_currency=usd&days={days}")
 
-if ohlc and market:
+# === BULLETPROOF DATA CHECK ===
+if ohlc and market and 'prices' in market and market['prices']:
     # Candlestick
     df_c = pd.DataFrame(ohlc, columns=["time", "open", "high", "low", "close"])
     df_c["time"] = pd.to_datetime(df_c["time"], unit='ms')
 
-    # === SAFE VOLUME HANDLING ===
-    if 'total_volumes' in market and market['total_volumes']:
-        df_v = pd.DataFrame(market['total_volumes'], columns=['time', 'volume'])
-        df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')
-    else:
-        df_v = pd.DataFrame({'time': df_c['time'], 'volume': [0]*len(df_c)})
+    # Volume
+    df_v = pd.DataFrame(
+        market.get('total_volumes', [[0, 0]] * len(df_c)),
+        columns=['time', 'volume']
+    )
+    df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')
 
     # RSI
     prices = pd.DataFrame(market['prices'], columns=['time', 'price'])
@@ -107,7 +108,7 @@ if ohlc and market:
     loss = -delta.where(delta < 0, 0).rolling(14).mean()
     rs = gain / loss
     rsi = 100 - (100 / (1 + rs))
-    prices['rsi'] = rsi
+    prices['rsi'] = rsi.fillna(50)  # Default RSI
 
     # Subplots
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.03,
@@ -123,6 +124,9 @@ if ohlc and market:
     fig.update_layout(height=700, template="plotly_dark", xaxis_rangeslider_visible=False,
                       margin=dict(l=40, r=40, t=60, b=40), showlegend=False)
     st.plotly_chart(fig, use_container_width=True)
+else:
+    st.warning("Chart data unavailable. Try another coin or timeframe.")
+
 st.markdown("</div>", unsafe_allow_html=True)
 
 # === PORTFOLIO (GLASS CARD) ===
@@ -133,8 +137,9 @@ with st.expander("Add Holdings"):
     for name, cid in coin_options.items():
         amt = st.number_input(name, min_value=0.0, value=0.0, step=0.001, key=cid)
         if amt > 0:
-            price = fetch(f"/simple/price?ids={cid}&vs_currencies=usd")[cid]["usd"]
-            portfolio[name] = amt * price
+            price = fetch(f"/simple/price?ids={cid}&vs_currencies=usd")
+            if price and cid in price:
+                portfolio[name] = amt * price[cid]["usd"]
     if portfolio:
         total = sum(portfolio.values())
         st.metric("**Total Value**", f"${total:,.2f}")
