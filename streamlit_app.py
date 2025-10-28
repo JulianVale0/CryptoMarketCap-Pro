@@ -1,4 +1,4 @@
-# File: streamlit_app.py (FINAL — COINMARKETCAP PRO)
+# File: streamlit_app.py (FINAL — BULLETPROOF)
 import streamlit as st
 import requests
 import pandas as pd
@@ -65,36 +65,58 @@ def fetch_top():
 data = fetch_top()
 if data:
     df = pd.DataFrame(data)
-    # Use index + 1 for rank
-    df = df.reset_index(drop=True)
-    df = df[["name", "symbol", "current_price", "price_change_percentage_1h_in_currency",
-             "price_change_percentage_24h_in_currency", "price_change_percentage_7d_in_currency",
-             "market_cap", "total_volume", "sparkline_in_7d"]].copy()
-    df.insert(0, "#", range(1, len(df) + 1))  # Add rank
 
-    df.columns = ["#", "Name", "Symbol", "Price", "1h%", "24h%", "7d%", "Market Cap", "Volume", "7d Spark"]
+    # === SAFELY EXTRACT COLUMNS ===
+    cols = {
+        "Name": "name",
+        "Symbol": "symbol",
+        "Price": "current_price",
+        "1h%": "price_change_percentage_1h_in_currency",
+        "24h%": "price_change_percentage_24h_in_currency",
+        "7d%": "price_change_percentage_7d_in_currency",
+        "Market Cap": "market_cap",
+        "Volume": "total_volume",
+        "7d Spark": "sparkline_in_7d"
+    }
+
+    # Only include columns that exist
+    available_cols = [v for k, v in cols.items() if v in df.columns]
+    df = df[available_cols].copy()
+
+    # Add Rank
+    df = df.reset_index(drop=True)
+    df.insert(0, "#", range(1, len(df) + 1))
+
+    # Map back to display names
+    display_cols = ["#"] + [k for k, v in cols.items() if v in available_cols]
+    df.columns = display_cols
 
     # Format
-    df["Price"] = df["Price"].apply(lambda x: f"${x:,.4f}" if x < 1 else f"${x:,.2f}")
-    df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B")
-    df["Volume"] = df["Volume"].apply(lambda x: f"${x/1e6:.1f}M")
-    
+    if "Price" in df.columns:
+        df["Price"] = df["Price"].apply(lambda x: f"${x:,.4f}" if x < 1 else f"${x:,.2f}")
+    if "Market Cap" in df.columns:
+        df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B")
+    if "Volume" in df.columns:
+        df["Volume"] = df["Volume"].apply(lambda x: f"${x/1e6:.1f}M")
+
     # Price change badges
     def color_change(val):
         if pd.isna(val): return "N/A"
         color = "price-up" if val >= 0 else "price-down"
         return f"<span class='{color}'>{val:+.2f}%</span>"
-    df["1h%"] = df["1h%"].apply(color_change)
-    df["24h%"] = df["24h%"].apply(color_change)
-    df["7d%"] = df["7d%"].apply(color_change)
+
+    for col in ["1h%", "24h%", "7d%"]:
+        if col in df.columns:
+            df[col] = df[col].apply(color_change)
 
     # Sparkline
-    def sparkline(spark):
+    def safe_sparkline(spark):
         if not spark or 'price' not in spark or len(spark['price']) == 0: return "───"
         prices = spark['price'][-30:]
         first = prices[0]
         return ''.join(['<span style="color:#00ff88">█</span>' if p > first else '<span style="color:#666">░</span>' for p in prices])[::-1]
-    df["7d Spark"] = df["7d Spark"].apply(sparkline)
+    if "7d Spark" in df.columns:
+        df["7d Spark"] = df["7d Spark"].apply(safe_sparkline)
 
     # Render
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
