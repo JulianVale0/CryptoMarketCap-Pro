@@ -130,7 +130,7 @@ if data and len(data) > 0:
                 if st.button("View", key=f"view_{coin_id}"):
                     st.query_params.clear()
                     st.query_params["id"] = coin_id
-                    st.experimental_rerun()
+                    st.rerun()
             st.write(row.get("7d Spark", "---"))
 
     st.markdown("</div>", unsafe_allow_html=True)
