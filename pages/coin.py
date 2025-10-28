@@ -118,23 +118,26 @@ atl = detail.get("market_data", {}).get("atl", {}).get("usd", 0)
 img = detail.get("image", {}).get("large", "")
 spark = detail.get("market_data", {}).get("sparkline_in_7d", {}).get("price", [])
 
-# === HEADER — CLEAN & PREMIUM ===
-st.markdown("<div class='glass-card' style='padding: 20px; margin-bottom: 20px;'>", unsafe_allow_html=True)
+# === HEADER — ULTRA CLEAN & PREMIUM ===
+st.markdown("<div class='glass-card' style='padding: 32px 24px; text-align: center; margin-bottom: 24px;'>", unsafe_allow_html=True)
 
-col_icon, col_name = st.columns([1, 6])
+# Icon + Name + Symbol
+col_icon, col_name, col_symbol = st.columns([1, 3, 1], gap="small")
 with col_icon:
     if img:
-        st.image(img, width=60)
+        st.image(img, width=64)
 with col_name:
-    st.markdown(f"<h1 style='margin:0; color:#00d4aa; text-shadow: 0 0 20px rgba(0,212,170,0.5);'>{name}</h1>", unsafe_allow_html=True)
-    st.markdown(f"<h3 style='margin:0; color:#888;'>{symbol}</h3>", unsafe_allow_html=True)
+    st.markdown(f"<h1 style='margin:0; color:#00d4aa; text-shadow: 0 0 20px rgba(0,212,170,0.5); font-size: 2.8rem;'>{name}</h1>", unsafe_allow_html=True)
+with col_symbol:
+    st.markdown(f"<h3 style='margin:0; color:#888; font-size: 1.4rem;'>{symbol}</h3>", unsafe_allow_html=True)
 
 # Price + Change
 change_cls = "price-up" if change >= 0 else "price-down"
-st.markdown(f"<h2 style='margin: 12px 0 0 0;'>${price:,.4f} <span class='{change_cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
+st.markdown(f"<h2 style='margin: 16px 0 0 0; font-size: 2.2rem;'>{price:,.4f} <span class='{change_cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
 
 st.markdown("</div>", unsafe_allow_html=True)
 
+# === STATS IN GLASS CARDS ===
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown("### 7-Day Price Action")
 
