@@ -187,7 +187,7 @@ if not df.empty:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['ts'],
-        y=df['price'],
+        y=df['close'],  # ← USE 'close'
         line=dict(color="#00d4aa", width=2),
         mode='lines'
     ))
@@ -196,12 +196,7 @@ if not df.empty:
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(
-            showgrid=True, 
-            gridcolor='rgba(0, 212, 170, 0.1)', 
-            color='#888',
-            title=f"{selected_tf} Time Range"
-        ),
+        xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
         yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
         font=dict(family="Inter", color="#e0e0e0")
     )
