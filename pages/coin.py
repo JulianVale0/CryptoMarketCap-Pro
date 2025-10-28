@@ -115,7 +115,6 @@ vol = detail.get("market_data", {}).get("total_volume", {}).get("usd", 0)
 ath = detail.get("market_data", {}).get("ath", {}).get("usd", 0)
 atl = detail.get("market_data", {}).get("atl", {}).get("usd", 0)
 img = detail.get("image", {}).get("large", "")
-spark = detail.get("market_data", {}).get("sparkline_in_7d", {}).get("price", [])
 
 # === HEADER — ULTRA CLEAN & PREMIUM ===
 st.markdown("<div class='glass-card' style='padding: 32px 24px; text-align: center; margin-bottom: 24px;'>", unsafe_allow_html=True)
@@ -131,7 +130,7 @@ change_cls = "price-up" if change >= 0 else "price-down"
 st.markdown(f"<h2 style='margin: 16px 0 0 0; font-size: 2.2rem;'>${price:,.4f} <span class='{change_cls}'>{change:+.2f}%</span></h2>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
-# === TIMEFRAME TOGGLE (AFTER HEADER, BEFORE CHART) ===
+# === TIMEFRAME TOGGLE ===
 timeframes = {
     "1D": 1,
     "7D": 7,
@@ -195,13 +194,6 @@ with c4:
     st.metric("ATL", f"${atl:,.4f}" if atl else "N/A")
     st.markdown("</div>", unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
-
-# === 7D SPARKLINE ===
-def sparkline(p):
-    if len(p) < 2: return "---"
-    b = p[0]
-    return ''.join('<span style="color:#00ff88">█</span>' if x >= b else '<span style="color:#ff6b6b">░</span>' for x in p[-30:])[::-1]
-st.markdown(f"<div class='glass-card'>7d Trend: {sparkline(spark)}</div>", unsafe_allow_html=True)
 
 # === LIVE BADGE ===
 st.markdown("""
