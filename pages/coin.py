@@ -130,7 +130,14 @@ st.markdown("</div>", unsafe_allow_html=True)
 ohlc = get_ohlc(coin_id)
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown("### 7-Day Price Action")
+
 if not ohlc.empty:
+    # Calculate RSI
+    delta = ohlc["close"].diff()
+    gain = delta.clip(lower=0).rolling(14).mean()
+    loss = -delta.clip(upper=0).rolling(14).mean()
+    rsi = 100 - (100 / (1 + gain / loss))
+
     # === CANDLES — NEON GLASS STYLE ===
     fig = go.Figure()
     fig.add_trace(go.Candlestick(
@@ -139,10 +146,8 @@ if not ohlc.empty:
         high=ohlc['high'],
         low=ohlc['low'],
         close=ohlc['close'],
-        increasing_line_color='#00ff88',
-        decreasing_line_color='#ff6b6b',
-        increasing_fillcolor='#00ff8833',
-        decreasing_fillcolor='#ff6b6b33'
+        increasing=dict(line=dict(color='#00ff88'), fillcolor='#00ff8833'),
+        decreasing=dict(line=dict(color='#ff6b6b'), fillcolor='#ff6b6b33')
     ))
     fig.update_layout(
         template="plotly_dark",
@@ -179,6 +184,7 @@ if not ohlc.empty:
     st.plotly_chart(fig_rsi, use_container_width=True, config={'displayModeBar': False})
 else:
     st.info("Chart loading...")
+
 st.markdown("</div>", unsafe_allow_html=True)
 
 def sparkline(p):
