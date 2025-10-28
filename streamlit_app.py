@@ -3,7 +3,7 @@ import requests
 import pandas as pd
 import time
 
-st.set_page_config(page_title="CryptoMarketCap Pro", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="NEXA", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
 
 # PWA HEAD
 st.markdown("""
@@ -39,7 +39,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # HEADER
-st.markdown("<h1>CryptoMarketCap Pro</h1>", unsafe_allow_html=True)
+st.markdown("<h1>NEXA</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align:center; color:#888;'>Live prices - Real-time rankings</p>", unsafe_allow_html=True)
 st.markdown("""
 <div style='text-align:center; margin:8px 0;'>
