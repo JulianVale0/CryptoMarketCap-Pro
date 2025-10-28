@@ -78,19 +78,16 @@ def get_detail(cid):
 
 @st.cache_data(ttl=60)
 def get_price_history(cid, days):
-    url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
-    headers = {"User-Agent": "NEXA/1.0"}
+    api_url = "cryptomarketcap-pro-production.up.railway.app"  # ← YOUR RAILWAY URL
     try:
-        response = requests.get(url, params={"vs_currency": "usd", "days": days}, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        prices = data.get("prices", [])
-        if not prices:
+        response = requests.get(f"{api_url}/ohlc/{cid}", params={"days": days}, timeout=10)
+        data = response.json().get("data", [])
+        if not data:
             return pd.DataFrame()
-        df = pd.DataFrame(prices, columns=["ts", "price"])
-        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
+        df = pd.DataFrame(data)
         return df
-    except:
+    except Exception as e:
+        st.error(f"API error: {e}")
         return pd.DataFrame()
 
 # === FETCH DATA ===
