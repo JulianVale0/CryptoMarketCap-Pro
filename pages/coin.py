@@ -45,7 +45,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # === BACK BUTTON + COIN SELECTION ===
-if st.button("Back to Rankings"):
+if st.button("← Back to Rankings"):
     if "selected_coin" in st.session_state:
         del st.session_state.selected_coin
     st.switch_page("streamlit_app.py")
@@ -81,7 +81,7 @@ coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 @st.cache_data(ttl=60)
 def get_detail(cid):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}"
-    headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
+    headers = {"User-Agent": "NEXA/1.0"}
     try:
         response = requests.get(
             url,
@@ -99,7 +99,7 @@ def get_ohlc(cid, days):
     if days not in [1, 7]:
         return pd.DataFrame()
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/ohlc"
-    headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
+    headers = {"User-Agent": "NEXA/1.0"}
     try:
         response = requests.get(
             url,
@@ -107,49 +107,20 @@ def get_ohlc(cid, days):
             headers=headers,
             timeout=10
         )
-        if response.status_code != 200:
-            st.warning(f"OHLC API error: {response.status_code}")
-            return pd.DataFrame()
+        response.raise_for_status()
         d = response.json()
         if not d:
-            st.info("No OHLC data returned.")
             return pd.DataFrame()
         df = pd.DataFrame(d, columns=["ts", "open", "high", "low", "close"])
-        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        return df
-    except Exception as e:
-        st.warning(f"OHLC request failed: {str(e)}")
-        return pd.DataFrame()
-
-@st.cache_data(ttl=60)
-def get_market_chart_range(cid, days):
-    if days <= 90:
-        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
-        params = {"vs_currency": "usd", "days": days}
-    else:
-        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart/range"
-        from_ts = int((pd.Timestamp.now() - pd.Timedelta(days=days)).timestamp())
-        to_ts = int(pd.Timestamp.now().timestamp())
-        params = {"vs_currency": "usd", "from": from_ts, "to": to_ts}
-    
-    headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
-    try:
-        response = requests.get(url, params=params, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-        prices = data.get("prices", [])
-        if not prices:
-            return pd.DataFrame()
-        df = pd.DataFrame(prices, columns=["ts", "price"])
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         return df
     except:
         return pd.DataFrame()
 
 @st.cache_data(ttl=60)
-def get_market_chart_range(cid, days):
+def get_market_chart(cid, days):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
-    headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
+    headers = {"User-Agent": "NEXA/1.0"}
     try:
         response = requests.get(
             url,
@@ -245,7 +216,7 @@ if days in [1, 7]:
         st.info("OHLC data not available.")
 else:
     with st.spinner("Loading price history..."):
-        df = get_market_chart_range(coin_id, days)
+        df = get_market_chart(coin_id, days)
     if not df.empty:
         fig = go.Figure()
         fig.add_trace(go.Scatter(
@@ -268,8 +239,6 @@ else:
         st.info("Price history unavailable.")
 
 st.markdown("</div>", unsafe_allow_html=True)
-
-
 
 # === METRICS ===
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
