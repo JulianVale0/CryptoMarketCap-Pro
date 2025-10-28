@@ -86,19 +86,19 @@ def get_detail(cid):
         return None
 
 @st.cache_data(ttl=10)
-def get_ohlc(cid):
+def get_ohlc(cid, days):
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/ohlc"
     headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
     try:
-        d = requests.get(url, params={"vs_currency":"usd","days":7}, headers=headers, timeout=15).json()
+        d = requests.get(url, params={"vs_currency":"usd","days":days}, headers=headers, timeout=15).json()
         df = pd.DataFrame(d, columns=["ts","open","high","low","close"])
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
-        return df  # Full 4h data
+        return df
     except:
         return pd.DataFrame()
 
 # === FETCH OHLC DATA ===
-ohlc = get_ohlc(coin_id)
+ohlc = get_ohlc(coin_id, days)
 
 with st.spinner("Loading coin data..."):
     detail = get_detail(coin_id)
@@ -137,9 +137,21 @@ st.markdown(f"<h2 style='margin: 16px 0 0 0; font-size: 2.2rem;'>{price:,.4f} <s
 
 st.markdown("</div>", unsafe_allow_html=True)
 
+# === TIMEFRAME TOGGLE ===
+timeframes = {
+    "1D": 1,
+    "7D": 7,
+    "1M": 30,
+    "3M": 90,
+    "1Y": 365,
+    "5Y": 1825
+}
+selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)  # Default 7D
+days = timeframes[selected_tf]
+
 # === STATS IN GLASS CARDS ===
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown("### 7-Day Price Action")
+st.markdown(f"### {selected_tf} Price Action")
 
 if not ohlc.empty:
     # RSI
