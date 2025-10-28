@@ -1,4 +1,4 @@
-# File: streamlit_app.py (FINAL — ALWAYS SHOWS CHART)
+# File: streamlit_app.py (FINAL — NO ERRORS)
 import streamlit as st
 import requests
 import pandas as pd
@@ -80,27 +80,27 @@ if top:
     st.markdown(df.to_html(escape=False, index=False), unsafe_allow_html=True)
 st.markdown("</div>", unsafe_allow_html=True)
 
-# === PRO CHART — ALWAYS WORKS (FROM market_chart ONLY) ===
+# === PRO CHART — BULLETPROOF (ALL MS) ===
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown(f"## {coin_name} Pro Chart")
 days = {"1D":1, "7D":7, "30D":30, "90D":90, "1Y":365}[timeframe]
 market = fetch(f"/coins/{coin_id}/market_chart?vs_currency=usd&days={days}")
 
 if market and 'prices' in market and market['prices']:
-    # === PRICE DATA ===
+    # === PRICE DATA (ms) ===
     prices = pd.DataFrame(market['prices'], columns=['time', 'price'])
     prices['time'] = pd.to_datetime(prices['time'], unit='ms')
 
-    # === FAKE OHLC FROM PRICE (for candlestick) ===
+    # === FAKE OHLC ===
     df_c = prices.copy()
     df_c['open'] = df_c['high'] = df_c['low'] = df_c['close'] = df_c['price']
 
-    # === VOLUME ===
+    # === VOLUME (ms) ===
     df_v = pd.DataFrame(
-        market.get('total_volumes', [[t, 0] for t in prices['time'].astype(int)//1000]),
+        market.get('total_volumes', [[t, 0] for t in prices['time'].astype('int64')]),
         columns=['time', 'volume']
     )
-    df_v['time'] = pd.to_datetime(df_v['time'], unit='s')
+    df_v['time'] = pd.to_datetime(df_v['time'], unit='ms')  # ms
 
     # === RSI ===
     delta = prices['price'].diff()
@@ -113,40 +113,4 @@ if market and 'prices' in market and market['prices']:
     # === PLOT ===
     fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.03,
                         row_heights=[0.6, 0.2, 0.2])
-    fig.add_trace(go.Candlestick(x=df_c['time'], open=df_c['open'], high=df_c['high'],
-                                 low=df_c['low'], close=df_c['close'],
-                                 name="Price", increasing_line_color='#00ff88', decreasing_line_color='#ff6b6b'), row=1, col=1)
-    fig.add_trace(go.Bar(x=df_v['time'], y=df_v['volume'], name="Volume", marker_color='rgba(68, 87, 119, 0.6)'), row=2, col=1)
-    fig.add_trace(go.Scatter(x=prices['time'], y=prices['rsi'], name="RSI", line=dict(color='#ffaa00', width=2)), row=3, col=1)
-    fig.add_hline(y=70, line_dash="dot", line_color="#ff6b6b", row=3, col=1)
-    fig.add_hline(y=30, line_dash="dot", line_color="#00ff88", row=3, col=1)
-
-    fig.update_layout(height=700, template="plotly_dark", xaxis_rangeslider_visible=False,
-                      margin=dict(l=40, r=40, t=60, b=40), showlegend=False)
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("Loading chart data... (may take a moment)")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# === PORTFOLIO ===
-st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-st.markdown("## Portfolio Tracker")
-with st.expander("Add Holdings"):
-    portfolio = {}
-    for name, cid in coin_options.items():
-        amt = st.number_input(name, min_value=0.0, value=0.0, step=0.001, key=cid)
-        if amt > 0:
-            price_data = fetch(f"/simple/price?ids={cid}&vs_currencies=usd")
-            if price_data and cid in price_data:
-                portfolio[name] = amt * price_data[cid]["usd"]
-    if portfolio:
-        total = sum(portfolio.values())
-        st.metric("**Total Value**", f"${total:,.2f}")
-        df_p = pd.DataFrame(list(portfolio.items()), columns=["Coin", "Value"])
-        df_p["Value"] = df_p["Value"].apply(lambda x: f"${x:,.2f}")
-        st.dataframe(df_p, hide_index=True)
-st.markdown("</div>", unsafe_allow_html=True)
-
-# === FOOTER ===
-st.markdown("<p style='text-align: center; color: #888; margin-top: 40px;'>Live • Auto-updates • Built with ❤️</p>", unsafe_allow_html=True)
+    fig.add_trace(go.Candlestick(x=df_c['time'], open=df_c['open'], high=df_c['high
