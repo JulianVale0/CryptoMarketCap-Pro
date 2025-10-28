@@ -128,10 +128,9 @@ if data and len(data) > 0:
             with col7: st.write(row.get("7d%", "N/A"))
             with col8:
                 if st.button("View", key=f"view_{coin_id}"):
-                    st.query_params.clear()
-                    st.query_params["id"] = coin_id
-                    st.rerun()
-            st.write(row.get("7d Spark", "---"))
+                    st.session_state.selected_coin = coin_id
+                    st.switch_page("pages/coin.py")
+                    st.write(row.get("7d Spark", "---"))
 
     st.markdown("</div>", unsafe_allow_html=True)
 else:
