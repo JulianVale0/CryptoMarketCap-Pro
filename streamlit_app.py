@@ -91,12 +91,12 @@ df.insert(0, "#", range(1, len(df) + 1))
 df.columns = ["#"] + [k for k, v in cols.items() if v in df.columns]
 
     # Format Price
-    if "Price" in df.columns:
-        df["Price"] = df["Price"].apply(lambda x: f"${x:,.6f}".rstrip("0").rstrip(".") if x < 1 else f"${x:,.2f}")
-    if "Market Cap" in df.columns:
-        df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B" if pd.notna(x) else "N/A")
-    if "Volume" in df.columns:
-        df["Volume"] = df["Volume"].apply(lambda x: f"${x/1e6:.1f}M" if pd.notna(x) else "N/A")
+if "Price" in df.columns:
+    df["Price"] = df["Price"].apply(lambda x: f"${x:,.6f}".rstrip("0").rstrip(".") if x < 1 else f"${x:,.2f}")
+if "Market Cap" in df.columns:
+    df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B" if pd.notna(x) else "N/A")
+if "Volume" in df.columns:
+    df["Volume"] = df["Volume"].apply(lambda x: f"${x/1e6:.1f}M" if pd.notna(x) else "N/A")
 
     # % Color
     def color(val):
