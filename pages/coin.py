@@ -77,17 +77,37 @@ def get_detail(cid):
         return None
 
 @st.cache_data(ttl=60)
-def get_price_history(cid, days):
-    api_url = "https://cryptomarketcap-pro-production.up.railway.app"  # ← YOUR RAILWAY URL
+def get_price_history(coin_id, days):
+    # Map CoinGecko ID to Binance symbol
+    symbol_map = {
+        "bitcoin": "BTCUSDT", "ethereum": "ETHUSDT", "binancecoin": "BNBUSDT", "solana": "SOLUSDT",
+        "ripple": "XRPUSDT", "cardano": "ADAUSDT", "dogecoin": "DOGEUSDT", "tron": "TRXUSDT",
+        "polkadot": "DOTUSDT", "polygon": "MATICUSDT", "litecoin": "LTCUSDT", "avalanche-2": "AVAXUSDT",
+        "shiba-inu": "SHIBUSDT", "chainlink": "LINKUSDT", "uniswap": "UNIUSDT"
+    }
+    symbol = symbol_map.get(coin_id, coin_id.upper() + "USDT")
+    
+    interval = "1d"
+    limit = min(days, 1000)  # Binance max 1000
+    
+    url = "https://api.binance.com/api/v3/klines"
+    params = {"symbol": symbol, "interval": interval, "limit": limit}
+    
     try:
-        response = requests.get(f"{api_url}/ohlc/{cid}", params={"days": days}, timeout=10)
-        data = response.json().get("data", [])
-        if not data:
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+        if not data or isinstance(data, dict):  # Error response
             return pd.DataFrame()
-        df = pd.DataFrame(data)
-        return df
-    except Exception as e:
-        st.error(f"API error: {e}")
+        df = pd.DataFrame(data, columns=[
+            "open_time", "open", "high", "low", "close", "volume",
+            "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
+        ])
+        df = df[["open_time", "open", "high", "low", "close"]]
+        df.columns = ["ts", "open", "high", "low", "close"]
+        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
+        df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
+        return df.to_dict(orient="records")
+    except:
         return pd.DataFrame()
 
 # === FETCH DATA ===
@@ -145,7 +165,7 @@ if not df.empty:
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=df['ts'],
-        y=df['price'],
+        y=df['close'],
         line=dict(color="#00d4aa", width=2),
         mode='lines'
     ))
