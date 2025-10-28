@@ -28,7 +28,7 @@ st.markdown("""
 
 st.markdown("<a href='/' class='back-btn'>Back to Rankings</a><br><br>", unsafe_allow_html=True)
 
-query_params = st.experimental_get_query_params()
+query_params = st.query_params
 coin_id = query_params.get("id", [None])[0]
 if not coin_id:
     st.error("No coin selected.")
