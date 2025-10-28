@@ -75,7 +75,7 @@ if not data or not isinstance(data, (list, tuple)):
     st.rerun()
   
 df = pd.DataFrame(data)
-    cols = {
+        cols = {
         "Name": "name",
         "Symbol": "symbol",
         "Price": "current_price",
