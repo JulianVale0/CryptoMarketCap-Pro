@@ -56,21 +56,28 @@ if "selected_coin" not in st.session_state:
 
 coin_id = st.session_state.selected_coin
 
-# Map symbol to CoinGecko ID if needed
+# === MAP SYMBOL TO COINGECKO ID ===
 symbol_to_id = {
+    "BTC": "bitcoin",
     "ETH": "ethereum",
     "BNB": "binancecoin",
-    "ADA": "cardano",
     "SOL": "solana",
+    "XRP": "ripple",
+    "ADA": "cardano",
+    "DOGE": "dogecoin",
+    "TRX": "tron",
     "DOT": "polkadot",
     "MATIC": "polygon",
+    "LTC": "litecoin",
     "AVAX": "avalanche-2",
+    "SHIB": "shiba-inu",
     "LINK": "chainlink",
-    "UNI": "uniswap",
-    "LTC": "litecoin"
+    "UNI": "uniswap"
 }
-if coin_id.upper() in symbol_to_id:
-    coin_id = symbol_to_id[coin_id.upper()]
+coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
+
+# === FETCH OHLC DATA ===
+ohlc = get_ohlc(coin_id)
 
 @st.cache_data(ttl=10)
 def get_detail(cid):
