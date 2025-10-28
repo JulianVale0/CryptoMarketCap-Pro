@@ -116,14 +116,17 @@ df = pd.DataFrame(data)
     if "7d Spark" in df.columns:
         df["7d Spark"] = df["sparkline_in_7d"].apply(sparkline)
 
-    # === EXPANDABLE ROWS WITH VIEW BUTTON ===
+   # === EXPANDABLE ROWS WITH VIEW BUTTON ===
     st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
     st.markdown("## Top 100 Cryptocurrencies")
 
     for idx, row in df.iterrows():
-    if idx >= len(data):
-        continue
-    coin_id = data[idx].get("id", "unknown") if isinstance(data[idx], dict) else "unknown"
+        # Safety: Skip if data is missing or not dict
+        if idx >= len(data) or not isinstance(data[idx], dict):
+            continue
+        
+        coin_id = data[idx].get("id", "unknown")
+        
         with st.expander(f"#{row['#']} {row['Name']} {row['Symbol']} • ${row['Price']}"):
             col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 3, 1, 2, 1, 1, 1, 2])
             with col1: st.write(row["#"])
