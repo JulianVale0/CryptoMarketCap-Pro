@@ -1,0 +1,21 @@
+{
+  "name": "CryptoMarketCap Pro",
+  "short_name": "CryptoPro",
+  "description": "Live crypto rankings. Clean. Fast. Real-time.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a1a",
+  "theme_color": "#00d4aa",
+  "icons": [
+    {
+      "src": "https://cryptomarketcap.pro/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cryptomarketcap.pro/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
