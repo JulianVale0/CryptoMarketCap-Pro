@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import time
 
-st.set_page_config(page_title="Coin Detail", layout="wide")
+st.set_page_config(page_title="NEXA • Coin Detail", layout="wide")
 
 st.markdown("""
 <style>
