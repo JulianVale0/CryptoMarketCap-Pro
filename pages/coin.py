@@ -217,9 +217,31 @@ if days in [1, 7]:
         )
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     else:
-        st.info("OHLC data not available for this timeframe.")
+        # Fallback to market_chart
+        with st.spinner("Loading price chart..."):
+            df = get_market_chart(coin_id, days)
+        if not df.empty:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                x=df['ts'],
+                y=df['price'],
+                line=dict(color="#00d4aa", width=2),
+                mode='lines'
+            ))
+            fig.update_layout(
+                height=500,
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+                yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+                font=dict(family="Inter", color="#e0e0e0")
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("Chart data unavailable.")
 else:
-    with st.spinner("Loading price history..."):
+    with st.spinner("Loading price chart..."):
         df = get_market_chart(coin_id, days)
     if not df.empty:
         fig = go.Figure()
@@ -243,7 +265,6 @@ else:
         st.info("Price history unavailable.")
 
 st.markdown("</div>", unsafe_allow_html=True)
-
 # === METRICS ===
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
