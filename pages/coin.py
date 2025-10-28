@@ -96,6 +96,8 @@ def get_detail(cid):
 
 @st.cache_data(ttl=60)
 def get_ohlc(cid, days):
+    if days not in [1, 7]:
+        return pd.DataFrame()
     url = f"https://api.coingecko.com/api/v3/coins/{cid}/ohlc"
     headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
     try:
@@ -105,14 +107,18 @@ def get_ohlc(cid, days):
             headers=headers,
             timeout=10
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            st.warning(f"OHLC API error: {response.status_code}")
+            return pd.DataFrame()
         d = response.json()
         if not d:
+            st.info("No OHLC data returned.")
             return pd.DataFrame()
         df = pd.DataFrame(d, columns=["ts", "open", "high", "low", "close"])
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         return df
-    except:
+    except Exception as e:
+        st.warning(f"OHLC request failed: {str(e)}")
         return pd.DataFrame()
 
 # === FETCH DATA ===
@@ -163,33 +169,56 @@ days = timeframes[selected_tf]
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown(f"### {selected_tf} Price Action")
 
-with st.spinner("Loading chart..."):
-    ohlc = get_ohlc(coin_id, days)
-
-if not ohlc.empty:
-    fig = go.Figure()
-    fig.add_trace(go.Candlestick(
-        x=ohlc['ts'],
-        open=ohlc['open'],
-        high=ohlc['high'],
-        low=ohlc['low'],
-        close=ohlc['close'],
-        increasing_line_color='#00ff88',
-        decreasing_line_color='#ff6b6b'
-    ))
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        height=500,
-        margin=dict(l=0, r=0, t=40, b=0),
-        xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
-        yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
-        font=dict(family="Inter", color="#e0e0e0")
-    )
-    st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+if days in [1, 7]:
+    with st.spinner("Loading OHLC chart..."):
+        ohlc = get_ohlc(coin_id, days)
+    if not ohlc.empty:
+        fig = go.Figure()
+        fig.add_trace(go.Candlestick(
+            x=ohlc['ts'],
+            open=ohlc['open'],
+            high=ohlc['high'],
+            low=ohlc['low'],
+            close=ohlc['close'],
+            increasing_line_color='#00ff88',
+            decreasing_line_color='#ff6b6b'
+        ))
+        fig.update_layout(
+            template="plotly_dark",
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            height=500,
+            margin=dict(l=0, r=0, t=40, b=0),
+            xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+            yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+            font=dict(family="Inter", color="#e0e0e0")
+        )
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+    else:
+        # Fallback to sparkline
+        spark = detail.get("market_data", {}).get("sparkline_in_7d", {}).get("price", [])
+        if spark:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(
+                y=spark,
+                line=dict(color="#00d4aa", width=2),
+                mode='lines'
+            ))
+            fig.update_layout(
+                height=300,
+                margin=dict(l=0, r=0, t=0, b=0),
+                template="plotly_dark",
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                xaxis=dict(showticklabels=False),
+                yaxis=dict(showticklabels=False)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            st.caption("7D sparkline (OHLC temporarily unavailable)")
+        else:
+            st.info("Chart data temporarily unavailable.")
 else:
-    st.info("Chart unavailable. Try a different timeframe.")
+    st.info("OHLC charts only available for 1D and 7D.")
 
 st.markdown("</div>", unsafe_allow_html=True)
 
