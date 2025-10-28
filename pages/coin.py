@@ -8,21 +8,38 @@ st.set_page_config(page_title="Coin Detail", layout="wide")
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    body {font-family: 'Inter', sans-serif;}
-    .main {background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%);}
+    .main {background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%); font-family: 'Inter', sans-serif; color: #e0e0e0;}
     .glass-card {
-        background: rgba(30,35,60,0.7);
+        background: rgba(30, 35, 60, 0.7);
         backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         border-radius: 20px;
-        border: 1px solid rgba(0,212,170,0.2);
-        padding: 20px;
+        border: 1px solid rgba(0, 212, 170, 0.3);
+        padding: 24px;
         margin: 16px 0;
-        box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        transition: all 0.4s;
     }
-    .glass-card:hover {transform: translateY(-4px);}
-    .price-up {color:#00ff88; font-weight:700;}
-    .price-down {color:#ff6b6b; font-weight:700;}
-    .back-btn {color:#00d4aa; text-decoration:none; font-weight:600;}
+    .glass-card:hover {transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0, 212, 170, 0.2);}
+    .price-up {color: #00ff88; font-weight: 700; text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);}
+    .price-down {color: #ff6b6b; font-weight: 700; text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);}
+    .back-btn {
+        background: rgba(0, 212, 170, 0.2);
+        color: #00d4aa;
+        padding: 8px 16px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 600;
+        display: inline-block;
+        transition: 0.3s;
+    }
+    .back-btn:hover {background: rgba(0, 212, 170, 0.4); transform: translateY(-2px);}
+    .metric-glass {
+        background: rgba(0, 212, 170, 0.1);
+        padding: 12px;
+        border-radius: 16px;
+        border: 1px solid rgba(0, 212, 170, 0.3);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -38,6 +55,22 @@ if "selected_coin" not in st.session_state:
     st.stop()
 
 coin_id = st.session_state.selected_coin
+
+# Map symbol to CoinGecko ID if needed
+symbol_to_id = {
+    "ETH": "ethereum",
+    "BNB": "binancecoin",
+    "ADA": "cardano",
+    "SOL": "solana",
+    "DOT": "polkadot",
+    "MATIC": "polygon",
+    "AVAX": "avalanche-2",
+    "LINK": "chainlink",
+    "UNI": "uniswap",
+    "LTC": "litecoin"
+}
+if coin_id.upper() in symbol_to_id:
+    coin_id = symbol_to_id[coin_id.upper()]
 
 @st.cache_data(ttl=10)
 def get_detail(cid):
