@@ -147,22 +147,22 @@ def get_price_history(coin_id, days):
 
     # Calculate interval based on days
     if days <= 1:
-        interval = "1min"
+        interval = "12min"
         limit = target_points
     elif days <= 7:
-        interval = "5min"
+        interval = "84min"
         limit = target_points
     elif days <= 30:
-        interval = "1hour"
+        interval = "360min"
         limit = target_points
     elif days <= 90:
-        interval = "4hour"
+        interval = "1080min"
         limit = target_points
     elif days <= 365:
-        interval = "1day"
+        interval = "4380min"
         limit = target_points
     else:  # 5Y
-        interval = "1day"
+        interval = "21900"
         limit = target_points
 
     url = "https://api.kucoin.com/api/v1/market/candles"
