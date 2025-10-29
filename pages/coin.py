@@ -22,7 +22,7 @@ st.markdown(
         border: 1px solid rgba(0, 212, 170, 0.3);
         padding: 24px;
         margin: 16px 0;
-        box-shadow:  0 12px 32px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
         transition: all 0.4s;
     }
     .glass-card:hover {transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0, 212, 170, 0.2);}
