@@ -1,3 +1,12 @@
+# NEXA — Live, Clean, Fast
+
+**CHART CODE RESTORED + DYNAMIC X-AXIS**
+
+---
+
+## **FULL `pages/coin.py` — FIXED**
+
+```python
 # pages/coin.py
 import streamlit as st
 import requests
@@ -140,41 +149,44 @@ def get_price_history(coin_id, days):
         "shiba-inu": "SHIBUSD", "chainlink": "LINKUSD", "uniswap": "UNIUSD"
     }
     symbol = symbol_map.get(coin_id, coin_id.upper() + "USD")
-    
+
     if days == 1:
         interval, limit = "1m", 1440
     elif days == 7:
         interval, limit = "5m", 2016
     elif days == 30:
-        interval, limit = "15m", 720
+        interval, limit = "1h", 720
     elif days == 90:
-        interval, limit = "2h", 540
+        interval, limit = "4h", 540
     elif days == 365:
         interval, limit = "1d", 365
     elif days == 1825:
-        interval, limit = "7d", 260
+        interval, limit = "1d", 1000
     else:
         interval, limit = "1d", min(days, 1000)
-    
+
     url = "https://api.binance.us/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
-    
+
     try:
-        response = requests.get(url, params=params, timeout=10)
-        data = response.json()
+        r = requests.get(url, params=params, timeout=10)
+        data = r.json()
         if not data or isinstance(data, dict):
             return pd.DataFrame()
-        
-        df = pd.DataFrame(data, columns=[
-            "open_time", "open", "high", "low", "close", "volume",
-            "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
-        ])
+
+        df = pd.DataFrame(
+            data,
+            columns=[
+                "open_time", "open", "high", "low", "close", "volume",
+                "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
+            ],
+        )
         df = df[["open_time", "open", "high", "low", "close"]]
         df.columns = ["ts", "open", "high", "low", "close"]
-        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
+        df["ts"] = pd.to_datetime(df["ts"], unit="ms")
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
-        
-        # ---- EXACT TIME RANGE ----
+
+        # Exact time range
         cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
         df = df[df["ts"] >= cutoff].reset_index(drop=True)
         return df
@@ -216,7 +228,7 @@ if not df.empty:
             )
         )
 
-    # ---- DYNAMIC X-AXIS RANGE ----
+    # Dynamic X-axis
     x_min = df["ts"].min()
     x_max = df["ts"].max()
     fig.update_xaxes(range=[x_min, x_max])
