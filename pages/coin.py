@@ -216,6 +216,11 @@ if not df.empty:
             )
         )
 
+    # ---- DYNAMIC X-AXIS RANGE ----
+    x_min = df["ts"].min()
+    x_max = df["ts"].max()
+    fig.update_xaxes(range=[x_min, x_max])
+
     fig.update_layout(
         height=500,
         template="plotly_dark",
@@ -226,6 +231,8 @@ if not df.empty:
             gridcolor="rgba(0, 212, 170, 0.1)",
             color="#888",
             title=f"{selected_tf} Time Range",
+            type="date",
+            tickformat="%b %d %H:%M" if days <= 7 else "%b %d",
         ),
         yaxis=dict(showgrid=True, gridcolor="rgba(0, 212, 170, 0.1)", color="#888"),
         font=dict(family="Inter", color="#e0e0e0"),
