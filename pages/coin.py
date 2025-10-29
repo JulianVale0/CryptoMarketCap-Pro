@@ -133,54 +133,35 @@ chart_type = st.radio("Chart Type", ["Line", "Candles"], horizontal=True)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_price_history(coin_id, days):
+    # KuCoin symbol mapping (similar to Binance.US)
     symbol_map = {
-        "bitcoin": "BTCUSD", "ethereum": "ETHUSD", "binancecoin": "BNBUSD", "solana": "SOLUSD",
-        "ripple": "XRPUSD", "cardano": "ADAUSD", "dogecoin": "DOGEUSD", "tron": "TRXUSD",
-        "polkadot": "DOTUSD", "polygon": "MATICUSD", "litecoin": "LTCUSD", "avalanche-2": "AVAXUSD",
-        "shiba-inu": "SHIBUSD", "chainlink": "LINKUSD", "uniswap": "UNIUSD"
+        "bitcoin": "BTC-USDT", "ethereum": "ETH-USDT", "binancecoin": "BNB-USDT", "solana": "SOL-USDT",
+        "ripple": "XRP-USDT", "cardano": "ADA-USDT", "dogecoin": "DOGE-USDT", "tron": "TRX-USDT",
+        "polkadot": "DOT-USDT", "polygon": "MATIC-USDT", "litecoin": "LTC-USDT", "avalanche-2": "AVAX-USDT",
+        "shiba-inu": "SHIB-USDT", "chainlink": "LINK-USDT", "uniswap": "UNI-USDT"
     }
-    symbol = symbol_map.get(coin_id, coin_id.upper() + "USD")
+    symbol = symbol_map.get(coin_id, coin_id.upper() + "-USDT")
     
-    # Fetch enough data to cover period + buffer
-    if days == 1:
-        interval, limit = "1m", 1440
-    elif days == 7:
-        interval, limit = "5m", 2016
-    elif days == 30:
-        interval, limit = "1h", 720
-    elif days == 90:
-        interval, limit = "4h", 540
-    elif days == 365:
-        interval, limit = "1d", 365
-    elif days == 1825:
-        interval, limit = "1d", 1000
-    else:
-        interval, limit = "1d", min(days, 1000)
+    interval = "1d"
+    limit = min(days, 1000)
     
-    url = "https://api.binance.us/api/v3/klines"
-    params = {"symbol": symbol, "interval": interval, "limit": limit}
+    url = "https://api.kucoin.com/api/v1/market/candles"
+    params = {"symbol": symbol, "type": interval, "startAt": 0, "endAt": 0}
     
     try:
         response = requests.get(url, params=params, timeout=10)
-        data = response.json()
-        if not data or isinstance(data, dict):
+        data = response.json().get("data", [])
+        if not data:
             return pd.DataFrame()
-        
-        df = pd.DataFrame(data, columns=[
-            "open_time", "open", "high", "low", "close", "volume",
-            "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
-        ])
-        df = df[["open_time", "open", "high", "low", "close"]]
-        df.columns = ["ts", "open", "high", "low", "close"]
-        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
+        # KuCoin format: [time, open, close, high, low, volume, turnover]
+        df = pd.DataFrame(data, columns=["ts", "open", "close", "high", "low", "volume", "turnover"])
+        df = df[["ts", "open", "high", "low", "close"]]
+        df["ts"] = pd.to_datetime(df["ts"], unit='s')
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
-        
-        # EXACT PERIOD: today - days
-        cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
-        df = df[df["ts"] >= cutoff].reset_index(drop=True)
+        df = df.sort_values("ts").tail(days).reset_index(drop=True)
         return df
     except Exception as e:
-        st.error(f"API error: {e}")
+        st.error(f"KuCoin API error: {e}")
         return pd.DataFrame()
 # ----------------------------------------------------------------------
 # 8. CHART
