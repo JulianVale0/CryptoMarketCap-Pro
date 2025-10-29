@@ -129,7 +129,7 @@ days = timeframes[selected_tf]
 chart_type = st.radio("Chart Type", ["Line", "Candles"], horizontal=True)
 
 # ----------------------------------------------------------------------
-# 7. PRICE HISTORY (KuCoin)
+# 7. PRICE HISTORY (KuCoin) — EXACT DATE RANGE
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_price_history(coin_id, days):
@@ -161,6 +161,7 @@ def get_price_history(coin_id, days):
         df["ts"] = pd.to_datetime(df["ts"], unit='s')
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
         
+        # EXACT DATE RANGE: today - days
         cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
         df = df[df["ts"] >= cutoff].reset_index(drop=True)
         return df
@@ -169,7 +170,7 @@ def get_price_history(coin_id, days):
         return pd.DataFrame()
 
 # ----------------------------------------------------------------------
-# 8. CHART
+# 8. CHART — DYNAMIC X-AXIS
 # ----------------------------------------------------------------------
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown(f"### {selected_tf} Price Action")
@@ -201,6 +202,11 @@ if not df.empty:
                 mode="lines",
             )
         )
+
+    # DYNAMIC X-AXIS RANGE
+    x_min = df["ts"].min()
+    x_max = df["ts"].max()
+    fig.update_xaxes(range=[x_min, x_max])
 
     fig.update_layout(
         height=500,
