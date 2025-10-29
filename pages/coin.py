@@ -51,7 +51,7 @@ if "selected_coin" not in st.session_state:
 coin_id = st.session_state.selected_coin
 
 # ----------------------------------------------------------------------
-# 3. MAP COINGECKO ID → KUCOIN SYMBOL
+# 3. MAP SYMBOL TO COINGECKO ID
 # ----------------------------------------------------------------------
 symbol_to_id = {
     "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana",
@@ -62,7 +62,7 @@ symbol_to_id = {
 coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 
 # ----------------------------------------------------------------------
-# 4. FETCH DETAIL (CoinGecko – header)
+# 4. FETCH DETAIL (CoinGecko)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_detail(cid):
@@ -113,7 +113,7 @@ st.markdown(
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
-# 6. TIMEFRAME + CHART TYPE
+# 6. TIMEFRAME SELECTOR
 # ----------------------------------------------------------------------
 timeframes = {
     "1D": 1,
@@ -126,68 +126,37 @@ timeframes = {
 selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)
 days = timeframes[selected_tf]
 
-chart_type = st.radio("Chart Type", ["Line", "Candles"], horizontal=True)
-
 # ----------------------------------------------------------------------
-# 7. PRICE HISTORY (KuCoin) — EXACT DATE RANGE
+# 7. PRICE HISTORY (CoinGecko)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
-@st.cache_data(ttl=60)
-def get_price_history(coin_id, days):
-    symbol_map = {
-        "bitcoin": "BTC-USDT", "ethereum": "ETH-USDT", "binancecoin": "BNB-USDT", "solana": "SOL-USDT",
-        "ripple": "XRP-USDT", "cardano": "ADA-USDT", "dogecoin": "DOGE-USDT", "tron": "TRX-USDT",
-        "polkadot": "DOT-USDT", "polygon": "MATIC-USDT", "litecoin": "LTC-USDT", "avalanche-2": "AVAX-USDT",
-        "shiba-inu": "SHIB-USDT", "chainlink": "LINK-USDT", "uniswap": "UNI-USDT"
-    }
-    symbol = symbol_map.get(coin_id, coin_id.upper() + "-USDT")
-
-    # Target ~120 points per chart
-    target_points = 120
-
-    # Calculate interval based on days
-    if days <= 1:
-        interval = "1min"
-        limit = target_points
-    elif days <= 7:
-        interval = "5min"
-        limit = target_points
-    elif days <= 30:
-        interval = "1hour"
-        limit = target_points
-    elif days <= 90:
-        interval = "4hour"
-        limit = target_points
-    elif days <= 365:
-        interval = "1day"
-        limit = target_points
-    else:  # 5Y
-        interval = "1day"
-        limit = target_points
-
-    url = "https://api.kucoin.com/api/v1/market/candles"
-    params = {"symbol": symbol, "type": interval}
+def get_price_history(cid, days):
+    if days <= 365:
+        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
+        params = {"vs_currency": "usd", "days": days}
+    else:
+        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart/range"
+        from_ts = int((pd.Timestamp.now() - pd.Timedelta(days=days)).timestamp())
+        to_ts = int(pd.Timestamp.now().timestamp())
+        params = {"vs_currency": "usd", "from": from_ts, "to": to_ts}
     
+    headers = {"User-Agent": "NEXA/1.0"}
     try:
-        response = requests.get(url, params=params, timeout=10)
-        data = response.json().get("data", [])
-        if not data:
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        prices = data.get("prices", [])
+        if not prices:
             return pd.DataFrame()
-        
-        df = pd.DataFrame(data, columns=["ts", "open", "close", "high", "low", "volume", "turnover"])
-        df = df[["ts", "open", "high", "low", "close"]]
-        df["ts"] = pd.to_datetime(df["ts"], unit='s')
-        df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
-        
-        # Sort & slice last `target_points`
-        df = df.sort_values("ts").tail(target_points).reset_index(drop=True)
+        df = pd.DataFrame(prices, columns=["ts", "price"])
+        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         return df
     except Exception as e:
-        st.error(f"KuCoin API error: {e}")
+        st.error(f"API error: {e}")
         return pd.DataFrame()
 
 # ----------------------------------------------------------------------
-# 8. CHART — DYNAMIC X-AXIS
+# 8. CHART
 # ----------------------------------------------------------------------
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown(f"### {selected_tf} Price Action")
@@ -197,49 +166,20 @@ with st.spinner("Loading price history..."):
 
 if not df.empty:
     fig = go.Figure()
-
-    if chart_type == "Candles":
-        fig.add_trace(
-            go.Candlestick(
-                x=df["ts"],
-                open=df["open"],
-                high=df["high"],
-                low=df["low"],
-                close=df["close"],
-                increasing_line_color="#00ff88",
-                decreasing_line_color="#ff6b6b",
-            )
-        )
-    else:
-        fig.add_trace(
-            go.Scatter(
-                x=df["ts"],
-                y=df["close"],
-                line=dict(color="#00d4aa", width=2),
-                mode="lines",
-            )
-        )
-
-    # DYNAMIC X-AXIS RANGE
-    x_min = df["ts"].min()
-    x_max = df["ts"].max()
-    fig.update_xaxes(range=[x_min, x_max])
-
+    fig.add_trace(go.Scatter(
+        x=df['ts'],
+        y=df['price'],
+        line=dict(color="#00d4aa", width=2),
+        mode='lines'
+    ))
     fig.update_layout(
         height=500,
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(
-            showgrid=True,
-            gridcolor="rgba(0, 212, 170, 0.1)",
-            color="#888",
-            title=f"{selected_tf} Time Range",
-            type="date",
-            tickformat="%b %d %H:%M" if days <= 7 else "%b %d",
-        ),
-        yaxis=dict(showgrid=True, gridcolor="rgba(0, 212, 170, 0.1)", color="#888"),
-        font=dict(family="Inter", color="#e0e0e0"),
+        xaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        yaxis=dict(showgrid=True, gridcolor='rgba(0, 212, 170, 0.1)', color='#888'),
+        font=dict(family="Inter", color="#e0e0e0")
     )
     st.plotly_chart(fig, use_container_width=True)
 else:
