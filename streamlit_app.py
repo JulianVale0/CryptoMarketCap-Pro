@@ -1,151 +1,106 @@
+# streamlit_app.py
 import streamlit as st
 import requests
 import pandas as pd
-import time
 
-st.set_page_config(page_title="NEXA", page_icon="Chart increasing", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="NEXA • Rankings", layout="wide")
 
-# PWA HEAD
-st.markdown("""
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#00d4aa">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js');
-    });
-  }
-</script>
-""", unsafe_allow_html=True)
-
-# GLASS CSS
-st.markdown("""
+# ----------------------------------------------------------------------
+# 1. STYLE
+# ----------------------------------------------------------------------
+st.markdown(
+    """
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     .main {background: linear-gradient(135deg, #0a0a1a 0%, #1a1a2e 100%); font-family: 'Inter', sans-serif; color: #e0e0e0;}
     .glass-card {
-        background: rgba(30, 35, 60, 0.7); backdrop-filter: blur(16px); border-radius: 20px;
-        border: 1px solid rgba(0, 212, 170, 0.2); padding: 24px; margin: 16px 0;
-        box-shadow: 0 12px 32px rgba(0,0,0,0.4); transition: all 0.4s;
+        background: rgba(30, 35, 60, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border-radius: 20px;
+        border: 1px solid rgba(0, 212, 170, 0.3);
+        padding: 24px;
+        margin: 16px 0;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        transition: all 0.4s;
     }
-    .glass-card:hover {transform: translateY(-8px);}
-    h1 {color: #00d4aa; text-shadow: 0 0 20px rgba(0,212,170,0.5);}
-    .price-up {color: #00ff88; font-weight: 700;}
-    .price-down {color: #ff6b6b; font-weight: 700;}
-    .sparkline {font-family: monospace; font-size: 14px;}
-    .footer {text-align: center; color: #666; font-size: 14px; margin-top: 60px;}
+    .glass-card:hover {transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0, 212, 170, 0.2);}
+    .price-up {color: #00ff88; font-weight: 700; text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);}
+    .price-down {color: #ff6b6b; font-weight: 700; text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);}
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
-# HEADER
-st.markdown("<h1>NEXA</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align:center; color:#888;'>Live prices - Real-time rankings</p>", unsafe_allow_html=True)
-st.markdown("""
-<div style='text-align:center; margin:8px 0;'>
-  <span style='background:#00d4aa; color:#000; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:700; animation: pulse 2s infinite;'>LIVE</span>
+# ----------------------------------------------------------------------
+# 2. FETCH TOP 100 COINS (CoinGecko)
+# ----------------------------------------------------------------------
+@st.cache_data(ttl=60)
+def get_top_coins():
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {"vs_currency": "usd", "order": "market_cap_desc", "per_page": 100, "page": 1}
+    headers = {"User-Agent": "NEXA/1.0"}
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=10)
+        r.raise_for_status()
+        return r.json()
+    except:
+        return []
+
+coins = get_top_coins()
+if not coins:
+    st.error("Failed to load rankings.")
+    st.stop()
+
+df = pd.DataFrame(coins)
+df = df[["id", "symbol", "name", "current_price", "price_change_percentage_24h", "market_cap"]]
+df.columns = ["id", "Symbol", "Name", "Price", "24h%", "Market Cap"]
+
+# ----------------------------------------------------------------------
+# 3. SEARCH BAR
+# ----------------------------------------------------------------------
+search = st.text_input("Search coin", placeholder="BTC, Ethereum, SOL...")
+
+if search:
+    df = df[df["Name"].str.contains(search, case=False) | df["Symbol"].str.contains(search, case=False)]
+
+# ----------------------------------------------------------------------
+# 4. TABLE
+# ----------------------------------------------------------------------
+st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+st.markdown("### Top 100 Coins")
+
+for _, row in df.iterrows():
+    col1, col2, col3, col4, col5, col6 = st.columns([1, 2, 3, 2, 1, 2])
+    with col1:
+        st.write(f"**#{df.index[_] + 1}**")
+    with col2:
+        st.write(row["Symbol"].upper())
+    with col3:
+        st.write(row["Name"])
+    with col4:
+        st.write(f"${row['Price']:,.4f}")
+    with col5:
+        change = row["24h%"]
+        cls = "price-up" if change >= 0 else "price-down"
+        st.markdown(f"<span class='{cls}'>{change:+.2f}%</span>", unsafe_allow_html=True)
+    with col6:
+        if st.button("View", key=row["id"]):
+            st.session_state.selected_coin = row["id"]
+            st.switch_page("pages/coin.py")
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ----------------------------------------------------------------------
+# 5. LIVE BADGE
+# ----------------------------------------------------------------------
+st.markdown(
+    """
+<div style='text-align:center; margin:20px 0;'>
+  <span style='background:#00d4aa; color:#000; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:700; animation: pulse 2s infinite;'>
+    LIVE
+  </span>
 </div>
 <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.7}}</style>
-""", unsafe_allow_html=True)
-
-# FETCH DATA
-@st.cache_data(ttl=10)
-def fetch_top():
-    url = "https://api.coingecko.com/api/v3/coins/markets"
-    params = {
-        "vs_currency": "usd",
-        "order": "market_cap_desc",
-        "per_page": 100,
-        "page": 1,
-        "sparkline": True,
-        "price_change_percentage": "1h,24h,7d"
-    }
-    headers = {"User-Agent": "CryptoMarketCap-Pro/1.0"}
-    try:
-        return requests.get(url, params=params, headers=headers, timeout=15).json()
-    except:
-        return None
-
-with st.spinner("Loading live data..."):
-    data = fetch_top()
-
-if not data or not isinstance(data, (list, tuple)):
-    st.error("Failed to load market data. Retrying...")
-    time.sleep(5)
-    st.rerun()
-  
-df = pd.DataFrame(data)
-cols = {
-  "Name": "name",
-  "Symbol": "symbol",
-  "Price": "current_price",
-  "1h%": "price_change_percentage_1h_in_currency",
-  "24h%": "price_change_percentage_24h_in_currency",
-  "7d%": "price_change_percentage_7d_in_currency",
-  "Market Cap": "market_cap",
-  "Volume": "total_volume",
-  "7d Spark": "sparkline_in_7d"
-    }
-df = df[[v for k, v in cols.items() if v in df.columns]].copy()
-df.insert(0, "#", range(1, len(df) + 1))
-df.columns = ["#"] + [k for k, v in cols.items() if v in df.columns]
-
-    # Format Price
-if "Price" in df.columns:
-    df["Price"] = df["Price"].apply(lambda x: f"${x:,.6f}".rstrip("0").rstrip(".") if x < 1 else f"${x:,.2f}")
-if "Market Cap" in df.columns:
-    df["Market Cap"] = df["Market Cap"].apply(lambda x: f"${x/1e9:.2f}B" if pd.notna(x) else "N/A")
-if "Volume" in df.columns:
-    df["Volume"] = df["Volume"].apply(lambda x: f"${x/1e6:.1f}M" if pd.notna(x) else "N/A")
-
-    # % Color
-    def color(val):
-        if pd.isna(val): return "N/A"
-        return f"<span class='price-up'>{val:+.2f}%</span>" if val >= 0 else f"<span class='price-down'>{val:+.2f}%</span>"
-    for c in ["1h%", "24h%", "7d%"]:
-        if c in df.columns:
-            df[c] = df[c].apply(color)
-
-    # Sparkline
-    def sparkline(s):
-        if not s or 'price' not in s or len(s['price']) == 0:
-            return "---"
-        p = s['price'][-30:]
-        b = p[0]
-        return ''.join('<span style="color:#00ff88">█</span>' if x >= b else '<span style="color:#ff6b6b">░</span>' for x in p)[::-1]
-    if "7d Spark" in df.columns:
-        df["7d Spark"] = df["sparkline_in_7d"].apply(sparkline)
-
-   # === EXPANDABLE ROWS WITH VIEW BUTTON ===
-    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
-    st.markdown("## Top 100 Cryptocurrencies")
-
-    for idx, row in df.iterrows():
-        # Safety: Skip if data is missing or not dict
-        if idx >= len(data) or not isinstance(data[idx], dict):
-            continue
-        
-        coin_id = data[idx].get("id", "unknown")
-        
-        with st.expander(f"#{row['#']} {row['Name']} {row['Symbol']} • ${row['Price']}"):
-            col1, col2, col3, col4, col5, col6, col7, col8 = st.columns([1, 3, 1, 2, 1, 1, 1, 2])
-            with col1: st.write(row["#"])
-            with col2: st.write(row["Name"])
-            with col3: st.write(row["Symbol"])
-            with col4: st.write(row["Price"])
-            with col5: st.write(row.get("1h%", "N/A"))
-            with col6: st.write(row.get("24h%", "N/A"))
-            with col7: st.write(row.get("7d%", "N/A"))
-            with col8:
-                if st.button("View", key=f"view_{coin_id}"):
-                    st.session_state.selected_coin = coin_id
-                    st.switch_page("pages/coin.py")
-            st.write(row.get("7d Spark", "---"))
-
-    st.markdown("</div>", unsafe_allow_html=True)
-else:
-    st.error("Failed to load data. Retrying...")
-    time.sleep(5)
-    st.rerun()
-
-st.markdown("<div class='footer'>Live - Updates every 10s</div>", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
