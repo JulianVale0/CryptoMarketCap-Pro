@@ -31,27 +31,50 @@ st.markdown(
     .back-btn {background: rgba(0, 212, 170, 0.2); color: #00d4aa; padding: 8px 16px; border-radius: 12px; text-decoration: none; font-weight: 600; display: inline-block; transition: 0.3s;}
     .back-btn:hover {background: rgba(0, 212, 170, 0.4); transform: translateY(-2px);}
     .metric-glass {background: rgba(0, 212, 170, 0.1); padding: 12px; border-radius: 16px; border: 1px solid rgba(0, 212, 170, 0.3);}
+    /* Remove top bar */
+    .css-1d391kg {display: none !important;}
 </style>
 """,
     unsafe_allow_html=True,
 )
 
 # ----------------------------------------------------------------------
-# 2. BACK BUTTON + COIN SELECTION
+# 2. FETCH TOP 100 COINS FOR DROPDOWN
 # ----------------------------------------------------------------------
-if st.button("Back to Rankings"):
-    if "selected_coin" in st.session_state:
-        del st.session_state.selected_coin
-    st.switch_page("streamlit_app.py")
+@st.cache_data(ttl=300)
+def get_top_coins():
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {"vs_currency": "usd", "order": "market_cap_desc", "per_page": 100, "page": 1}
+    headers = {"User-Agent": "NEXA/1.0"}
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=10)
+        r.raise_for_status()
+        return r.json()
+    except:
+        return []
 
-if "selected_coin" not in st.session_state:
-    st.error("No coin selected.")
+top_coins = get_top_coins()
+if not top_coins:
+    st.error("Failed to load coin list.")
     st.stop()
 
-coin_id = st.session_state.selected_coin
+# Build list: "Symbol - Name"
+coin_options = {f"{c['symbol'].upper()} - {c['name']}": c['id'] for c in top_coins}
+coin_names = list(coin_options.keys())
 
 # ----------------------------------------------------------------------
-# 3. MAP SYMBOL TO COINGECKO ID
+# 3. BACK BUTTON + COIN DROPDOWN
+# ----------------------------------------------------------------------
+col_back, col_dropdown = st.columns([1, 4])
+with col_back:
+    if st.button("Back to Rankings"):
+        st.switch_page("streamlit_app.py")
+with col_dropdown:
+    selected = st.selectbox("Select Coin", coin_names, index=0)
+    coin_id = coin_options[selected]
+
+# ----------------------------------------------------------------------
+# 4. MAP SYMBOL TO COINGECKO ID (fallback)
 # ----------------------------------------------------------------------
 symbol_to_id = {
     "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana",
@@ -62,7 +85,7 @@ symbol_to_id = {
 coin_id = symbol_to_id.get(coin_id.upper(), coin_id.lower())
 
 # ----------------------------------------------------------------------
-# 4. FETCH DETAIL (CoinGecko)
+# 5. FETCH DETAIL
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_detail(cid):
@@ -91,7 +114,7 @@ atl = detail.get("market_data", {}).get("atl", {}).get("usd", 0)
 img = detail.get("image", {}).get("large", "")
 
 # ----------------------------------------------------------------------
-# 5. HEADER
+# 6. HEADER
 # ----------------------------------------------------------------------
 st.markdown(
     "<div class='glass-card' style='padding: 32px 24px; text-align: center; margin-bottom: 24px;'>",
@@ -113,7 +136,7 @@ st.markdown(
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
-# 6. TIMEFRAME SELECTOR — 5Y REMOVED
+# 7. TIMEFRAME
 # ----------------------------------------------------------------------
 timeframes = {
     "1D": 1,
@@ -126,7 +149,7 @@ selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), inde
 days = timeframes[selected_tf]
 
 # ----------------------------------------------------------------------
-# 7. PRICE HISTORY (CoinGecko)
+# 8. PRICE HISTORY (CoinGecko)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_price_history(coin_id, days):
@@ -148,7 +171,7 @@ def get_price_history(coin_id, days):
         return pd.DataFrame()
 
 # ----------------------------------------------------------------------
-# 8. CHART
+# 9. CHART
 # ----------------------------------------------------------------------
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 st.markdown(f"### {selected_tf} Price Action")
@@ -180,7 +203,7 @@ else:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
-# 9. METRICS
+# 10. METRICS
 # ----------------------------------------------------------------------
 st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
 c1, c2, c3, c4 = st.columns(4)
@@ -203,7 +226,7 @@ with c4:
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
-# 10. LIVE BADGE
+# 11. LIVE BADGE
 # ----------------------------------------------------------------------
 st.markdown(
     """
