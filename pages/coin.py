@@ -141,10 +141,11 @@ def get_price_history(coin_id, days):
     }
     symbol = symbol_map.get(coin_id, coin_id.upper() + "USD")
     
+    # Fetch enough data to cover period + buffer
     if days == 1:
         interval, limit = "1m", 1440
     elif days == 7:
-        interval, limit = "5m", 2016  # 7 days
+        interval, limit = "5m", 2016
     elif days == 30:
         interval, limit = "1h", 720
     elif days == 90:
@@ -152,7 +153,7 @@ def get_price_history(coin_id, days):
     elif days == 365:
         interval, limit = "1d", 365
     elif days == 1825:
-        interval, limit = "1d", 1000  # Binance max
+        interval, limit = "1d", 1000
     else:
         interval, limit = "1d", min(days, 1000)
     
@@ -174,7 +175,7 @@ def get_price_history(coin_id, days):
         df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
         
-        # Exact time range
+        # EXACT PERIOD: today - days
         cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
         df = df[df["ts"] >= cutoff].reset_index(drop=True)
         return df
