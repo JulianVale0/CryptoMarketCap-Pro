@@ -140,11 +140,11 @@ def get_price_history(coin_id, days):
         "shiba-inu": "SHIBUSD", "chainlink": "LINKUSD", "uniswap": "UNIUSD"
     }
     symbol = symbol_map.get(coin_id, coin_id.upper() + "USD")
-
+    
     if days == 1:
         interval, limit = "1m", 1440
     elif days == 7:
-        interval, limit = "5m", 2016
+        interval, limit = "5m", 2016  # 7 days
     elif days == 30:
         interval, limit = "1h", 720
     elif days == 90:
@@ -152,31 +152,28 @@ def get_price_history(coin_id, days):
     elif days == 365:
         interval, limit = "1d", 365
     elif days == 1825:
-        interval, limit = "1d", 1000
+        interval, limit = "1d", 1000  # Binance max
     else:
         interval, limit = "1d", min(days, 1000)
-
+    
     url = "https://api.binance.us/api/v3/klines"
     params = {"symbol": symbol, "interval": interval, "limit": limit}
-
+    
     try:
-        r = requests.get(url, params=params, timeout=10)
-        data = r.json()
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
         if not data or isinstance(data, dict):
             return pd.DataFrame()
-
-        df = pd.DataFrame(
-            data,
-            columns=[
-                "open_time", "open", "high", "low", "close", "volume",
-                "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
-            ],
-        )
+        
+        df = pd.DataFrame(data, columns=[
+            "open_time", "open", "high", "low", "close", "volume",
+            "close_time", "quote_volume", "trades", "taker_buy_base", "taker_buy_quote", "ignore"
+        ])
         df = df[["open_time", "open", "high", "low", "close"]]
         df.columns = ["ts", "open", "high", "low", "close"]
-        df["ts"] = pd.to_datetime(df["ts"], unit="ms")
+        df["ts"] = pd.to_datetime(df["ts"], unit='ms')
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
-
+        
         # Exact time range
         cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
         df = df[df["ts"] >= cutoff].reset_index(drop=True)
@@ -184,7 +181,6 @@ def get_price_history(coin_id, days):
     except Exception as e:
         st.error(f"API error: {e}")
         return pd.DataFrame()
-
 # ----------------------------------------------------------------------
 # 8. CHART
 # ----------------------------------------------------------------------
