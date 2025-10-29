@@ -113,7 +113,7 @@ st.markdown(
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ----------------------------------------------------------------------
-# 6. TIMEFRAME SELECTOR
+# 6. TIMEFRAME SELECTOR — 5Y REMOVED
 # ----------------------------------------------------------------------
 timeframes = {
     "1D": 1,
@@ -121,7 +121,6 @@ timeframes = {
     "1M": 30,
     "3M": 90,
     "1Y": 365,
-    "5Y": 1825,
 }
 selected_tf = st.selectbox("Chart Period", options=list(timeframes.keys()), index=1)
 days = timeframes[selected_tf]
@@ -130,16 +129,9 @@ days = timeframes[selected_tf]
 # 7. PRICE HISTORY (CoinGecko)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
-def get_price_history(cid, days):
-    if days <= 365:
-        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart"
-        params = {"vs_currency": "usd", "days": days}
-    else:
-        url = f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart/range"
-        from_ts = int((pd.Timestamp.now() - pd.Timedelta(days=days)).timestamp())
-        to_ts = int(pd.Timestamp.now().timestamp())
-        params = {"vs_currency": "usd", "from": from_ts, "to": to_ts}
-    
+def get_price_history(coin_id, days):
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart"
+    params = {"vs_currency": "usd", "days": days}
     headers = {"User-Agent": "NEXA/1.0"}
     try:
         response = requests.get(url, params=params, headers=headers, timeout=10)
