@@ -141,7 +141,6 @@ def get_price_history(coin_id, days):
     }
     symbol = symbol_map.get(coin_id, coin_id.upper() + "-USDT")
 
-    # KuCoin interval mapping
     interval_map = {
         1: "1min", 7: "5min", 30: "1hour", 90: "4hour", 365: "1day", 1825: "1day"
     }
@@ -161,9 +160,8 @@ def get_price_history(coin_id, days):
         df["ts"] = pd.to_datetime(df["ts"], unit='s')
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
         
-        # EXACT DATE RANGE: today - days
-        cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
-        df = df[df["ts"] >= cutoff].reset_index(drop=True)
+        # SORT & SLICE LAST `days` POINTS
+        df = df.sort_values("ts").tail(days).reset_index(drop=True)
         return df
     except Exception as e:
         st.error(f"KuCoin API error: {e}")
