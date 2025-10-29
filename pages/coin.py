@@ -1,12 +1,3 @@
-# NEXA — Live, Clean, Fast
-
-**CHART CODE RESTORED + DYNAMIC X-AXIS**
-
----
-
-## **FULL `pages/coin.py` — FIXED**
-
-```python
 # pages/coin.py
 import streamlit as st
 import requests
