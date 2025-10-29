@@ -146,13 +146,13 @@ def get_price_history(coin_id, days):
     elif days == 7:
         interval, limit = "5m", 2016
     elif days == 30:
-        interval, limit = "1h", 720
+        interval, limit = "15m", 720
     elif days == 90:
-        interval, limit = "4h", 540
+        interval, limit = "2h", 540
     elif days == 365:
         interval, limit = "1d", 365
     elif days == 1825:
-        interval, limit = "1d", 1000
+        interval, limit = "7d", 260
     else:
         interval, limit = "1d", min(days, 1000)
     
