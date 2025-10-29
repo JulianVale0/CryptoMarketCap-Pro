@@ -132,6 +132,7 @@ chart_type = st.radio("Chart Type", ["Line", "Candles"], horizontal=True)
 # 7. PRICE HISTORY (KuCoin) — EXACT DATE RANGE
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
+@st.cache_data(ttl=60)
 def get_price_history(coin_id, days):
     symbol_map = {
         "bitcoin": "BTC-USDT", "ethereum": "ETH-USDT", "binancecoin": "BNB-USDT", "solana": "SOL-USDT",
@@ -141,11 +142,29 @@ def get_price_history(coin_id, days):
     }
     symbol = symbol_map.get(coin_id, coin_id.upper() + "-USDT")
 
-    interval_map = {
-        1: "1min", 7: "5min", 30: "1hour", 90: "4hour", 365: "1day", 1825: "1day"
-    }
-    interval = interval_map.get(days, "1day")
-    
+    # Target ~120 points per chart
+    target_points = 120
+
+    # Calculate interval based on days
+    if days <= 1:
+        interval = "1min"
+        limit = target_points
+    elif days <= 7:
+        interval = "5min"
+        limit = target_points
+    elif days <= 30:
+        interval = "1hour"
+        limit = target_points
+    elif days <= 90:
+        interval = "4hour"
+        limit = target_points
+    elif days <= 365:
+        interval = "1day"
+        limit = target_points
+    else:  # 5Y
+        interval = "1day"
+        limit = target_points
+
     url = "https://api.kucoin.com/api/v1/market/candles"
     params = {"symbol": symbol, "type": interval}
     
@@ -160,8 +179,8 @@ def get_price_history(coin_id, days):
         df["ts"] = pd.to_datetime(df["ts"], unit='s')
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
         
-        # SORT & SLICE LAST `days` POINTS
-        df = df.sort_values("ts").tail(days).reset_index(drop=True)
+        # Sort & slice last `target_points`
+        df = df.sort_values("ts").tail(target_points).reset_index(drop=True)
         return df
     except Exception as e:
         st.error(f"KuCoin API error: {e}")
