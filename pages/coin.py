@@ -22,7 +22,7 @@ st.markdown(
         border: 1px solid rgba(0, 212, 170, 0.3);
         padding: 24px;
         margin: 16px 0;
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        box-shadow:  0 12px 32px rgba(0, 0, 0, 0.4);
         transition: all 0.4s;
     }
     .glass-card:hover {transform: translateY(-8px); box-shadow: 0 20px 50px rgba(0, 212, 170, 0.2);}
@@ -51,7 +51,7 @@ if "selected_coin" not in st.session_state:
 coin_id = st.session_state.selected_coin
 
 # ----------------------------------------------------------------------
-# 3. MAP COINGECKO ID → BINANCE.US SYMBOL
+# 3. MAP COINGECKO ID → KUCOIN SYMBOL
 # ----------------------------------------------------------------------
 symbol_to_id = {
     "BTC": "bitcoin", "ETH": "ethereum", "BNB": "binancecoin", "SOL": "solana",
@@ -129,11 +129,10 @@ days = timeframes[selected_tf]
 chart_type = st.radio("Chart Type", ["Line", "Candles"], horizontal=True)
 
 # ----------------------------------------------------------------------
-# 7. PRICE HISTORY (Binance.US)
+# 7. PRICE HISTORY (KuCoin)
 # ----------------------------------------------------------------------
 @st.cache_data(ttl=60)
 def get_price_history(coin_id, days):
-    # KuCoin symbol mapping (similar to Binance.US)
     symbol_map = {
         "bitcoin": "BTC-USDT", "ethereum": "ETH-USDT", "binancecoin": "BNB-USDT", "solana": "SOL-USDT",
         "ripple": "XRP-USDT", "cardano": "ADA-USDT", "dogecoin": "DOGE-USDT", "tron": "TRX-USDT",
@@ -141,28 +140,34 @@ def get_price_history(coin_id, days):
         "shiba-inu": "SHIB-USDT", "chainlink": "LINK-USDT", "uniswap": "UNI-USDT"
     }
     symbol = symbol_map.get(coin_id, coin_id.upper() + "-USDT")
-    
-    interval = "1d"
-    limit = min(days, 1000)
+
+    # KuCoin interval mapping
+    interval_map = {
+        1: "1min", 7: "5min", 30: "1hour", 90: "4hour", 365: "1day", 1825: "1day"
+    }
+    interval = interval_map.get(days, "1day")
     
     url = "https://api.kucoin.com/api/v1/market/candles"
-    params = {"symbol": symbol, "type": interval, "startAt": 0, "endAt": 0}
+    params = {"symbol": symbol, "type": interval}
     
     try:
         response = requests.get(url, params=params, timeout=10)
         data = response.json().get("data", [])
         if not data:
             return pd.DataFrame()
-        # KuCoin format: [time, open, close, high, low, volume, turnover]
+        
         df = pd.DataFrame(data, columns=["ts", "open", "close", "high", "low", "volume", "turnover"])
         df = df[["ts", "open", "high", "low", "close"]]
         df["ts"] = pd.to_datetime(df["ts"], unit='s')
         df[["open", "high", "low", "close"]] = df[["open", "high", "low", "close"]].astype(float)
-        df = df.sort_values("ts").tail(days).reset_index(drop=True)
+        
+        cutoff = pd.Timestamp.now() - pd.Timedelta(days=days)
+        df = df[df["ts"] >= cutoff].reset_index(drop=True)
         return df
     except Exception as e:
         st.error(f"KuCoin API error: {e}")
         return pd.DataFrame()
+
 # ----------------------------------------------------------------------
 # 8. CHART
 # ----------------------------------------------------------------------
@@ -196,11 +201,6 @@ if not df.empty:
                 mode="lines",
             )
         )
-
-    # Dynamic X-axis
-    x_min = df["ts"].min()
-    x_max = df["ts"].max()
-    fig.update_xaxes(range=[x_min, x_max])
 
     fig.update_layout(
         height=500,
